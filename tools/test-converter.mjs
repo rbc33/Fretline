@@ -30,3 +30,19 @@ console.log('flat sync back', s2.exportFlatSyncPoints().length);
 // MIDI
 const midi = new at.midi.MidiFile(); const h = new at.midi.AlphaSynthMidiFileHandler(midi); new at.midi.MidiFileGenerator(s2, new at.Settings(), h).generate();
 console.log('midi events', midi.tracks?.reduce?.((a,t)=>a+t.events.length,0) ?? midi.events?.length);
+
+// --- elección de vídeo (Songsterr devuelve muchos; solo encaja el de la misma estructura) ---
+const { chooseVideo } = await import('../Fretline/Web/songsterr/convert.js');
+const pts = (n) => Array.from({ length: n }, (_, i) => i * 2);
+const videos = [
+  { videoId: 'alt-corto', feature: 'alternative', points: pts(3) },
+  { videoId: 'backing', feature: 'backing', points: pts(6) },
+  { videoId: 'principal', feature: null, points: pts(6) },
+  { videoId: 'alt-bueno', feature: 'alternative', points: pts(6) },
+];
+console.log('elige principal:', chooseVideo(score, videos)?.videoId);
+console.log('sin principal -> alternativo:', chooseVideo(score, videos.filter(v => v.feature !== null))?.videoId);
+console.log('ninguno encaja -> primero:', chooseVideo(score, [videos[0]])?.videoId);
+console.log('puntos negativos descartados:', videoPointsToSync(score, [-0.3, 2, 4, 6, 8, 10]).length);
+const pickup = buildScore(at, {}, [{ ...gtr, anacrusis: true }]);
+console.log('anacrusa:', pickup.masterBars[0].isAnacrusis);

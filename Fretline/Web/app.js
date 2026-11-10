@@ -3,7 +3,7 @@
 // JS -> Swift: window.webkit.messageHandlers.fretline.postMessage({ type, ... })
 
 import * as alphaTab from './vendor/alphatab/alphaTab.min.mjs';
-import { buildScore, videoPointsToSync, playOrder } from './songsterr/convert.js';
+import { buildScore, videoPointsToSync, playOrder, chooseVideo } from './songsterr/convert.js';
 
 const BASE = new URL('./', import.meta.url).href;
 const el = document.getElementById('tab');
@@ -302,19 +302,19 @@ window.fretline = {
   },
 
   // --- Songsterr: Swift descarga el JSON (sin CORS) y aquí lo convertimos a .gp ---
-  // payload: { requestId, meta: {title, artist}, parts: [...], videoPoints?: number[] }
+  // payload: { requestId, meta: {title, artist}, parts: [...], videos?: [{videoId, points, feature}] }
   convertSongsterr(payload) {
     try {
       const score = buildScore(alphaTab, payload.meta || {}, payload.parts || []);
-      const sync = Array.isArray(payload.videoPoints) && payload.videoPoints.length
-        ? videoPointsToSync(score, payload.videoPoints)
-        : [];
+      const video = chooseVideo(score, payload.videos);
+      const sync = video ? videoPointsToSync(score, video.points) : [];
       const bytes = new alphaTab.exporter.Gp7Exporter().export(score, new alphaTab.Settings());
       post('songsterrConverted', {
         requestId: payload.requestId,
         gpBase64: bytesToB64(bytes),
         title: score.title,
         artist: score.artist,
+        videoId: video?.videoId ?? null,
         syncPoints: sync,
       });
     } catch (e) {

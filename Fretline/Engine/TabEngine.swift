@@ -18,6 +18,7 @@ struct SongsterrConversion {
     let gpData: Data
     let title: String
     let artist: String
+    let videoId: String?
     let syncPoints: [SyncPoint]
 }
 
@@ -119,10 +120,9 @@ final class TabEngine: NSObject, WKScriptMessageHandler {
     func clearSync() { invoke("clearSync"); syncProgress = nil }
     func nudgeSync(_ deltaMs: Double) { invoke("nudgeSync", [deltaMs]) }
 
-    func convertSongsterr(meta: [String: Any], parts: [Any], videoPoints: [Double]?) async throws -> SongsterrConversion {
+    func convertSongsterr(meta: [String: Any], parts: [Any], videos: [[String: Any]]) async throws -> SongsterrConversion {
         let requestId = UUID().uuidString
-        var payload: [String: Any] = ["requestId": requestId, "meta": meta, "parts": parts]
-        if let videoPoints { payload["videoPoints"] = videoPoints }
+        let payload: [String: Any] = ["requestId": requestId, "meta": meta, "parts": parts, "videos": videos]
         return try await withCheckedThrowingContinuation { continuation in
             conversions[requestId] = continuation
             invoke("convertSongsterr", [payload])
@@ -210,6 +210,7 @@ final class TabEngine: NSObject, WKScriptMessageHandler {
                 continuation.resume(returning: SongsterrConversion(gpData: data,
                                                                    title: body["title"] as? String ?? "",
                                                                    artist: body["artist"] as? String ?? "",
+                                                                   videoId: body["videoId"] as? String,
                                                                    syncPoints: points))
             } else {
                 continuation.resume(throwing: SongsterrError.conversion("Respuesta vacía"))

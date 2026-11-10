@@ -117,6 +117,7 @@ export function buildScore(at, meta, parts) {
     const sig = sm.signature || (prev ? [prev.timeSignatureNumerator, prev.timeSignatureDenominator] : [4, 4]);
     mb.timeSignatureNumerator = sig[0];
     mb.timeSignatureDenominator = sig[1];
+    if (i === 0 && reference?.anacrusis) mb.isAnacrusis = true; // compás de anacrusa (pickup)
     if (sm.repeatStart) mb.isRepeatStart = true;
     if (sm.repeatClose) mb.repeatCount = sm.repeat || 2;
     const alt = alternateEndingBits(sm.alternateEnding);
@@ -248,7 +249,25 @@ export function videoPointsToSync(score, pointsSeconds) {
     const barIndex = order[k];
     const o = occ.get(barIndex) || 0;
     occ.set(barIndex, o + 1);
-    out.push({ barIndex, barPosition: 0, barOccurence: o, millisecondOffset: Math.round(pointsSeconds[k] * 1000) });
+    const ms = Math.round(pointsSeconds[k] * 1000);
+    if (ms < 0) continue; // el compás empieza antes que el vídeo
+    out.push({ barIndex, barPosition: 0, barOccurence: o, millisecondOffset: ms });
   }
   return out;
+}
+
+// Songsterr suele tener muchos vídeos por canción (originales, alternativos, backing, solos…).
+// Cada lista de puntos corresponde a una estructura concreta, así que elegimos uno cuyos
+// puntos encajen con los compases de ESTA partitura:
+//   1. el vídeo principal (feature null) si su nº de puntos encaja
+//   2. cualquier otro que encaje, prefiriendo "alternative" sobre backing/solo
+//   3. si ninguno encaja, el principal (o el primero)
+// videos: [{ videoId, points: number[], feature: string|null }]
+export function chooseVideo(score, videos) {
+  if (!Array.isArray(videos) || videos.length === 0) return null;
+  const played = playOrder(score).length;
+  const fits = (v) => Array.isArray(v.points) && v.points.length >= played && v.points.length <= played + 1;
+  const rank = (v) => (v.feature == null ? 0 : v.feature === 'alternative' ? 1 : 2);
+  const sorted = [...videos].filter((v) => v.videoId && v.points?.length).sort((a, b) => rank(a) - rank(b));
+  return sorted.find(fits) || sorted.find((v) => v.feature == null) || sorted[0] || null;
 }

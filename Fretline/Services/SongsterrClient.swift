@@ -34,11 +34,6 @@ struct SongsterrClient {
         let raw: [String: Any]
     }
 
-    struct Video {
-        let videoId: String
-        let points: [Double] // segundos, uno por compás tocado
-    }
-
     private static let cdnHosts = [
         "dqsljvtekg760.cloudfront.net",
         "d3d3l6a6rcgkaf.cloudfront.net",
@@ -105,17 +100,20 @@ struct SongsterrClient {
         throw lastError
     }
 
-    func fetchVideo(meta: Meta) async -> Video? {
+    /// Todos los vídeos con puntos de sync. Ojo: en el JSON `feature` puede ser `null`,
+    /// que llega como NSNull (no como nil), por eso se lee con `as? String`.
+    func fetchVideos(meta: Meta) async -> [[String: Any]] {
         guard let json = try? await getJSON("https://www.songsterr.com/api/video-points/\(meta.songId)/\(meta.revisionId)/list",
                                             what: "vídeos"),
-              let list = json as? [[String: Any]] else { return nil }
-        let candidates = list.compactMap { item -> (Video, Bool)? in
+              let list = json as? [[String: Any]] else { return [] }
+        return list.compactMap { item in
             guard let id = item["videoId"] as? String,
+                  (item["status"] as? String) == "done",
                   let points = (item["points"] as? [NSNumber])?.map(\.doubleValue), !points.isEmpty else { return nil }
-            let preferred = (item["status"] as? String) == "done" && item["feature"] == nil
-            return (Video(videoId: id, points: points), preferred)
+            var video: [String: Any] = ["videoId": id, "points": points]
+            if let feature = item["feature"] as? String { video["feature"] = feature }
+            return video
         }
-        return (candidates.first(where: { $0.1 }) ?? candidates.first)?.0
     }
 
     private func getJSON(_ urlString: String, what: String) async throws -> Any {
@@ -153,12 +151,13 @@ final class SongsterrImporter {
         }
 
         status = "Buscando vídeo sincronizado…"
-        let video = await client.fetchVideo(meta: meta)
+        let videos = await client.fetchVideos(meta: meta)
 
         status = "Convirtiendo a Guitar Pro…"
+        // El vídeo se elige en JS, donde se conoce el orden real de compases de la partitura
         let result = try await engine.convertSongsterr(meta: ["title": meta.title, "artist": meta.artist],
                                                        parts: parts,
-                                                       videoPoints: video?.points)
+                                                       videos: videos)
 
         let fileName = try SongLibrary.store(data: result.gpData, ext: "gp")
         let song = Song(title: meta.title.isEmpty ? result.title : meta.title,
@@ -166,7 +165,7 @@ final class SongsterrImporter {
                         fileName: fileName,
                         source: "songsterr",
                         songsterrId: songId,
-                        youtubeVideoId: video?.videoId,
+                        youtubeVideoId: result.videoId,
                         syncPoints: result.syncPoints)
         context.insert(song)
         try? context.save()
