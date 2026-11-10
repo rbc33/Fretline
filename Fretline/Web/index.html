@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>Fretline</title>
+  <style>
+    :root { --cursor-bar: rgba(255, 149, 0, 0.12); --cursor-beat: #ff6a00; --selection: rgba(0, 122, 255, 0.18); --bg: #ffffff; }
+    html, body { margin: 0; height: 100%; background: var(--bg); -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+    #scroller { position: absolute; inset: 0; overflow: auto; -webkit-overflow-scrolling: touch; }
+    #tab { min-height: 100%; }
+    .at-cursor-bar { background: var(--cursor-bar); }
+    .at-cursor-beat { background: var(--cursor-beat); width: 3px; border-radius: 2px; }
+    .at-selection div { background: var(--selection); }
+    .at-highlight * { fill: var(--cursor-beat); stroke: var(--cursor-beat); }
+    #loading { position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+      font: 600 15px -apple-system, system-ui, sans-serif; color: #666; background: rgba(255,255,255,0.85); z-index: 10; }
+    #loading.on { display: flex; }
+  </style>
+</head>
+<body>
+  <div id="scroller"><div id="tab"></div></div>
+  <div id="loading">Cargando…</div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
