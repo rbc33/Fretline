@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="75%">
+      <stop offset="0" stop-color="#1B2E63"/>
+      <stop offset="1" stop-color="#070D22"/>
+    </radialGradient>
+    <linearGradient id="pick" x1="0.15" y1="0" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#5CC2FF"/>
+      <stop offset="0.45" stop-color="#1E7BFF"/>
+      <stop offset="1" stop-color="#0A3FBF"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#BFE6FF" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#0A2E8A" stop-opacity="0.9"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="28" stdDeviation="34" flood-color="#000" flood-opacity="0.55"/>
+    </filter>
+    <path id="pickShape" d="M512 168 C 712 168 868 236 868 382 C 868 560 652 808 552 884 C 528 902 496 902 472 884 C 372 808 156 560 156 382 C 156 236 312 168 512 168 Z"/>
+    <clipPath id="clip"><use href="#pickShape"/></clipPath>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <g filter="url(#shadow)"><use href="#pickShape" fill="url(#pick)"/></g>
+  <g clip-path="url(#clip)">
+    <!-- textura sutil: seis cuerdas de tablatura -->
+    <g stroke="#FFFFFF" stroke-opacity="0.16" stroke-width="7">
+      <line x1="120" y1="330" x2="904" y2="330"/>
+      <line x1="120" y1="400" x2="904" y2="400"/>
+      <line x1="120" y1="470" x2="904" y2="470"/>
+      <line x1="120" y1="540" x2="904" y2="540"/>
+      <line x1="120" y1="610" x2="904" y2="610"/>
+      <line x1="120" y1="680" x2="904" y2="680"/>
+    </g>
+    <ellipse cx="420" cy="270" rx="300" ry="150" fill="url(#shine)" transform="rotate(-12 420 270)"/>
+  </g>
+  <use href="#pickShape" fill="none" stroke="url(#rim)" stroke-width="10"/>
+</svg>
