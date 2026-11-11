@@ -40,6 +40,10 @@ final class TabEngine: NSObject, WKScriptMessageHandler {
     private(set) var endTime: Double = 0       // ms
     private(set) var currentBar = 0
     private(set) var hasSelection = false
+    /// Compases seleccionados para el bucle (índices 0-based, inclusivos)
+    private(set) var barSelection: ClosedRange<Int>?
+    /// Se ha tocado el primer compás y se espera el segundo
+    private(set) var waitingForBarEnd = false
     private(set) var syncPoints: [SyncPoint] = []
     private(set) var syncProgress: SyncProgress?
     /// WebKit no deja arrancar el audio del sintetizador hasta que se toque la partitura
@@ -110,6 +114,11 @@ final class TabEngine: NSObject, WKScriptMessageHandler {
     func setSpeed(_ value: Double) { invoke("setSpeed", [value]) }
     func setLooping(_ on: Bool) { invoke("setLooping", [on]) }
     func clearSelection() { invoke("clearSelection"); hasSelection = false }
+    func setBarSelectMode(_ on: Bool) { invoke("setBarSelectMode", [on]); if !on { waitingForBarEnd = false } }
+    func selectBars(_ range: ClosedRange<Int>) { invoke("selectBars", [range.lowerBound, range.upperBound]) }
+    func adjustBarSelection(start delta: Int) { invoke("adjustBarSelection", ["start", delta]) }
+    func adjustBarSelection(end delta: Int) { invoke("adjustBarSelection", ["end", delta]) }
+    func shiftBarSelection(_ delta: Int) { invoke("shiftBarSelection", [delta]) }
     func setMetronome(_ on: Bool) { invoke("setMetronome", [on]) }
     func setCountIn(_ on: Bool) { invoke("setCountIn", [on]) }
     func showTracks(_ indices: [Int]) { invoke("showTracks", [indices]) }
@@ -201,6 +210,16 @@ final class TabEngine: NSObject, WKScriptMessageHandler {
 
         case "selection":
             hasSelection = body["hasSelection"] as? Bool ?? false
+
+        case "barSelection":
+            if let s = (body["start"] as? NSNumber)?.intValue, let e = (body["end"] as? NSNumber)?.intValue {
+                barSelection = s...max(s, e)
+                hasSelection = true
+            } else {
+                barSelection = nil
+                hasSelection = false
+            }
+            waitingForBarEnd = body["waitingForEnd"] as? Bool ?? false
 
         case "syncPoints":
             let points = (body["points"] as? [[String: Any]] ?? []).compactMap(SyncPoint.init(dict:))

@@ -37,6 +37,7 @@ private struct PlayerContent: View {
     @State private var showTracks = false
     @State private var showVideoLink = false
     @State private var syncEditing = false
+    @State private var barSelecting = false
     @State private var videoCorner: Alignment = .topTrailing
     @State private var videoMinimized = false
     @State private var didSetup = false
@@ -72,6 +73,10 @@ private struct PlayerContent: View {
             VStack(spacing: 0) {
                 if syncEditing {
                     SyncPanel(engine: engine, youtube: youtube) { syncEditing = false }
+                    Divider()
+                }
+                if barSelecting {
+                    BarLoopPanel(engine: engine, looping: $looping) { barSelecting = false }
                     Divider()
                 }
                 transportBar
@@ -110,6 +115,15 @@ private struct PlayerContent: View {
             }
             // Las velocidades de YouTube van en pasos de 0.25
             if newMode == .youtube, !Self.youtubeSpeeds.contains(speed) { setSpeed(1.0) }
+        }
+        .onChange(of: barSelecting) { _, on in
+            engine.setBarSelectMode(on)
+            if on { syncEditing = false }
+        }
+        .onChange(of: syncEditing) { _, on in if on { barSelecting = false } }
+        .onChange(of: engine.barSelection) { old, new in
+            // Al elegir compases se activa la repetición sola
+            if new != nil, old == nil { looping = true }
         }
         .onDisappear {
             engine.pause()
@@ -188,13 +202,20 @@ private struct PlayerContent: View {
                 Label("\(Int((speed * 100).rounded())) %", systemImage: "speedometer").monospacedDigit()
             }
 
+            Toggle(isOn: $barSelecting) {
+                Label(barLabel, systemImage: "rectangle.dashed")
+                    .monospacedDigit()
+            }
+            .toggleStyle(.button)
+            .help("Elegir compases para repetir")
+
             Toggle(isOn: $looping) { Image(systemName: "repeat") }
                 .toggleStyle(.button)
-                .help("Repetir la selección (arrastra sobre la tab para seleccionar)")
+                .help("Repetir la selección")
                 .onChange(of: looping) { _, on in engine.setLooping(on) }
 
             if engine.hasSelection {
-                Button { engine.clearSelection() } label: { Image(systemName: "selection.pin.in.out") }
+                Button { engine.clearSelection(); looping = false } label: { Image(systemName: "xmark.circle") }
                     .help("Quitar selección")
             }
 
@@ -221,6 +242,11 @@ private struct PlayerContent: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 10)
+    }
+
+    private var barLabel: String {
+        guard let r = engine.barSelection else { return "Compases" }
+        return r.count == 1 ? "Compás \(r.lowerBound + 1)" : "\(r.lowerBound + 1)–\(r.upperBound + 1)"
     }
 
     // MARK: - Toolbar superior

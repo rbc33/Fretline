@@ -37,6 +37,10 @@ const state = {
   resumeTick: null,
   pendingPlay: false,
   wantPlaying: false, // el usuario quiere que suene (hasta stop, pausa o fin)
+  barSelectMode: false, // modo «Compases»: tocar compases para elegir el bucle
+  barSel: null,         // { start, end } índices de compás (0-based)
+  barAnchor: null,      // primer compás tocado, esperando el segundo
+  downBar: null,
   switching: false,
 };
 
@@ -140,6 +144,31 @@ function createApi() {
 
   api.playbackRangeChanged?.on((e) => post('selection', { hasSelection: !!e.playbackRange }));
 
+  // Selección de compases: tocar inicio y fin, o arrastrar de un compás a otro
+  api.beatMouseDown.on((beat) => {
+    if (state.barSelectMode) state.downBar = beat.voice.bar.index;
+  });
+  api.beatMouseUp.on((beat) => {
+    if (!state.barSelectMode || state.downBar == null) return;
+    const down = state.downBar;
+    const up = beat ? beat.voice.bar.index : down;
+    state.downBar = null;
+    // Después de que alphaTab aplique su propia selección, ponemos la nuestra (compases enteros)
+    setTimeout(() => {
+      if (down !== up) {
+        state.barAnchor = null;
+        selectBars(Math.min(down, up), Math.max(down, up));
+      } else if (state.barAnchor == null) {
+        state.barAnchor = up;
+        selectBars(up, up);
+      } else {
+        const a = state.barAnchor;
+        state.barAnchor = null;
+        selectBars(Math.min(a, up), Math.max(a, up));
+      }
+    }, 0);
+  });
+
   api.error.on((e) => post('error', { message: String(e?.message || e) }));
   return api;
 }
@@ -157,6 +186,48 @@ function switchPlayerMode(mode) {
     ? alphaTab.PlayerMode.EnabledExternalMedia
     : alphaTab.PlayerMode.EnabledSynthesizer;
   api.updateSettings();
+}
+
+// ---------- selección de compases ----------
+function firstBeat(bar) {
+  for (const v of bar.voices) if (v.beats.length) return v.beats[0];
+  return null;
+}
+function lastBeat(bar) {
+  for (const v of bar.voices) if (v.beats.length) return v.beats[v.beats.length - 1];
+  return null;
+}
+
+function selectBars(start, end) {
+  const api = state.api;
+  const staff = api?.tracks?.[0]?.staves?.[0];
+  if (!staff) return;
+  const count = staff.bars.length;
+  start = Math.max(0, Math.min(start, count - 1));
+  end = Math.max(start, Math.min(end, count - 1));
+  const b0 = firstBeat(staff.bars[start]);
+  const b1 = lastBeat(staff.bars[end]);
+  if (!b0 || !b1) return;
+  api.highlightPlaybackRange(b0, b1);
+  api.applyPlaybackRangeFromHighlight();
+  state.barSel = { start, end };
+  // El cursor salta al inicio del bucle si estaba fuera
+  const range = api.playbackRange;
+  if (range && (api.tickPosition < range.startTick || api.tickPosition > range.endTick)) {
+    api.tickPosition = range.startTick;
+  }
+  post('barSelection', { start, end, waitingForEnd: state.barAnchor != null });
+}
+
+function clearBarSelection() {
+  const api = state.api;
+  state.barSel = null;
+  state.barAnchor = null;
+  if (api) {
+    api.playbackRange = null;
+    api.clearPlaybackRangeHighlight?.();
+  }
+  post('barSelection', { start: null, end: null });
 }
 
 // ---------- audio del sintetizador ----------
@@ -346,11 +417,33 @@ window.fretline = {
     state.looping = on;
     if (state.api) state.api.isLooping = on;
   },
-  clearSelection() {
-    if (state.api) {
-      state.api.playbackRange = null;
-      state.api.clearPlaybackRangeHighlight?.();
-    }
+  clearSelection() { clearBarSelection(); },
+
+  // --- Compases en bucle ---
+  setBarSelectMode(on) {
+    state.barSelectMode = on;
+    state.barAnchor = null;
+    state.downBar = null;
+  },
+  selectBars(start, end) { state.barAnchor = null; selectBars(start, end); },
+  // edge: 'start' | 'end'; delta: +1 / -1
+  adjustBarSelection(edge, delta) {
+    const sel = state.barSel;
+    if (!sel) return;
+    state.barAnchor = null;
+    let { start, end } = sel;
+    if (edge === 'start') start = Math.min(end, start + delta);
+    else end = Math.max(start, end + delta);
+    selectBars(start, end);
+  },
+  // Mueve todo el bucle (p. ej. al siguiente grupo de compases)
+  shiftBarSelection(delta) {
+    const sel = state.barSel;
+    if (!sel) return;
+    const len = sel.end - sel.start;
+    const count = state.api?.tracks?.[0]?.staves?.[0]?.bars.length ?? 0;
+    let start = Math.max(0, Math.min(sel.start + delta * (len + 1), count - 1 - len));
+    selectBars(start, start + len);
   },
   setMetronome(on) {
     state.metronome = on ? 1 : 0;
@@ -364,7 +457,12 @@ window.fretline = {
   showTracks(indices) {
     state.visibleTracks = indices;
     const tracks = tracksByIndex(indices);
-    if (tracks.length) state.api.renderTracks(tracks);
+    if (!tracks.length) return;
+    state.api.renderTracks(tracks);
+    const sel = state.barSel;
+    if (sel) {
+      const off = state.api.renderFinished.on(() => { off(); selectBars(sel.start, sel.end); });
+    }
   },
   setMute(index, on) { state.api?.changeTrackMute(tracksByIndex([index]), on); },
   setSolo(index, on) { state.api?.changeTrackSolo(tracksByIndex([index]), on); },
