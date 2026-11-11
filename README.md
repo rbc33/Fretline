@@ -1,121 +1,208 @@
+<div align="center">
+
+<img src="Fretline/Assets.xcassets/AppIcon.appiconset/mac-256@2x.png" width="160" alt="Fretline icon" />
+
 # Fretline
 
-Lector de tablaturas para iPad y Mac al estilo Songsterr: abre Guitar Pro (.gp, .gp3–.gp5, .gpx) y MusicXML, importa tabs de Songsterr y sincroniza la partitura con un vídeo de YouTube.
+### Learn any song, bar by bar, over the real recording.
 
-SwiftUI + SwiftData por fuera, [alphaTab](https://alphatab.net) 1.9 (MPL-2.0) dentro de un `WKWebView` para renderizar y reproducir.
+A native guitar tab player for **iPad and Mac**. Open Guitar Pro files, follow the cursor over the original YouTube video, slow it down, loop the hard part and nail it.
 
-## Puesta en marcha
+[![Platform](https://img.shields.io/badge/platform-iPadOS%2017%2B%20%7C%20macOS%2014%2B-1E7BFF?style=flat-square&logo=apple&logoColor=white)](#install)
+[![Swift](https://img.shields.io/badge/Swift-SwiftUI%20%2B%20SwiftData-F05138?style=flat-square&logo=swift&logoColor=white)](#build-from-source)
+[![Homebrew](https://img.shields.io/badge/brew-rbc33%2Ffretline-FBB040?style=flat-square&logo=homebrew&logoColor=black)](#macos--homebrew-recommended)
+[![Release](https://img.shields.io/github/v/release/rbc33/Fretline?style=flat-square&color=0A3FBF)](https://github.com/rbc33/Fretline/releases/latest)
 
-```sh
-brew install xcodegen
-cd Fretline
-xcodegen            # genera Fretline.xcodeproj a partir de project.yml
-open Fretline.xcodeproj
-```
+[**Install**](#install) · [**Features**](#features) · [**Build from source**](#build-from-source) · [**How it works**](#how-it-works)
 
-En Xcode: target **Fretline → Signing & Capabilities → Team**, elige tu iPad y Run. También vale exportar el .ipa e instalarlo con AltStore.
+</div>
 
-Requisitos: iPadOS 17+ / macOS 14+.
+---
 
-### Mac
+## Why Fretline?
 
-```sh
-./build-mac.sh                       # genera dist/Fretline.app (firma ad-hoc)
-cp -R dist/Fretline.app /Applications/
-```
+Tab sites are great at showing you the notes and bad at letting you **play along with the band**. Fretline puts the tab and the original recording side by side and keeps them locked together, so you learn the song the way it was actually played, not the way a MIDI file thinks it sounds.
 
-También puedes abrirlo en Xcode con el esquema **FretlineMac** y darle a ▶. El target de Mac comparte todo el código con el iPad; lo propio de cada plataforma está en `Platform/Platform.swift` y en bloques `#if os(...)`. Va con sandbox, con permiso de red (YouTube y Songsterr) y de lectura de los archivos que elijas.
+- 🎸 **Your tabs, your device.** Everything lives offline in your library: no account, no subscription, no ads.
+- 🎬 **The real track, in sync.** The tab cursor follows the YouTube video bar by bar, even through rubato and live takes.
+- 🔁 **Practice the hard part.** Select one or more bars and loop them at 50% speed until they're second nature.
+- ⚡ **Native and fast.** Built in SwiftUI for iPad and Mac, with a full SMuFL engraving and a real synth under the hood.
 
-### DMG y Homebrew
+---
 
-```sh
-./build-dmg.sh          # dist/Fretline-<versión>.dmg con acceso directo a Aplicaciones
-./release.sh 0.2.0      # versión + DMG + release en GitHub + actualiza la cask del tap
-```
+## Features
 
-Instalar con Homebrew (tap [rbc33/homebrew-fretline](https://github.com/rbc33/homebrew-fretline)):
+### 📂 Open anything
+- **Guitar Pro**: `.gp`, `.gpx`, `.gp5`, `.gp4`, `.gp3`, plus **MusicXML**.
+- Import from Files, AirDrop or **Open with… → Fretline** (on the Mac, the Finder too).
+- **Songsterr import**: paste a song link and Fretline fetches every track, converts it to Guitar Pro and brings the synced video along when one exists. *(Personal use, see [notes](#notes).)*
+
+### 🎬 YouTube sync
+- A floating video player, docked bottom-right by default; move it to any corner or shrink it.
+- **Video as master clock**: play, pause, seek, loop and speed all drive the video, and the tab follows.
+- **Tap-along sync editor**: tap (or hit Space, or a page-turner pedal mapped to Space) on beat 1 of each bar while the video plays. Repeats and alternate endings are handled for you.
+- **Quick sync**: mark where bar 1 starts and Fretline fills in the rest from the tempo. Perfect for songs recorded to a click.
+- Fine-tune with ±50 ms nudges and undo. Everything saves automatically.
+
+### 🔁 Practice tools
+- **Bar loops**: tap a start bar and an end bar (or drag across them) to loop just that section. Adjust each edge with −/+ or jump the whole loop to the next phrase with one tap.
+- **Loops survive mode switches**: flip between synth and video and your selection stays put.
+- **Speed control** from 25% to 150% (synth) or 25% to 200% (video).
+- **Metronome** and **count-in**.
+
+### 🎛️ Mixer and layout
+- Show or hide tracks, plus **mute** and **solo** per track.
+- **Page** or **horizontal** layout, with zoom in and out.
+- The animated beat cursor auto-scrolls so you never lose your place.
+
+### 🗂️ Library and history
+- Searchable library with favourites.
+- **Import history** grouped by day: reopen a song in one tap, or re-import a Songsterr tab you deleted.
+- Recent Songsterr imports appear right in the import sheet.
+
+### 🖥️ Mac-native
+- **Space** to play or pause, even with the score focused; **⌘O** to import; **⌘Y** for history.
+- Sandboxed, ad-hoc signed and installable with Homebrew.
+
+---
+
+## Install
+
+### macOS · Homebrew (recommended)
 
 ```sh
 brew install --cask rbc33/fretline/fretline
+```
+
+Update later with:
+
+```sh
 brew upgrade --cask fretline
 ```
 
-La app va firmada ad-hoc (sin Developer ID), así que la cask le quita la cuarentena al instalarla para que abra sin avisos.
+### macOS · DMG
 
-En el Mac, la barra espaciadora hace play/pausa (o marca compás en modo Sync) aunque el foco esté en la partitura. ⌘O abre el importador de archivos.
+Grab the latest **`Fretline-x.y.z.dmg`** from [**Releases**](https://github.com/rbc33/Fretline/releases/latest), open it and drag **Fretline** to **Applications**.
 
-## Qué hace
+> Fretline is ad-hoc signed (no Apple Developer ID yet). The first time, **right-click → Open**, or run
+> `xattr -dr com.apple.quarantine /Applications/Fretline.app`. The Homebrew cask does this for you.
 
-- **Biblioteca** con búsqueda, favoritas y borrado. Para importar:
-  - el botón «Importar» (Archivos);
-  - AirDrop;
-  - «Abrir con… Fretline» desde cualquier app.
-- **Reproductor**:
-  - play/pausa (espacio en teclado o pedal);
-  - velocidad de 25 % a 150 %;
-  - loop de la selección (arrastra sobre la tab para seleccionar);
-  - metrónomo y cuenta atrás;
-  - pistas: mostrar/ocultar, mute y solo;
-  - vista página u horizontal, y zoom.
-- **YouTube**:
-  - el vídeo aparece flotante; puedes moverlo de esquina y minimizarlo;
-  - en modo YouTube, el reloj lo marca el vídeo y alphaTab (`PlayerMode.EnabledExternalMedia`) mueve el cursor a partir de sus puntos de sync;
-  - play, seek, loop y velocidad se aplican al vídeo.
-- **Editor de sync** (botón «Sync» en modo YouTube):
-  - *Marcar compás*: con el vídeo sonando, toca el botón, la barra espaciadora o un pedal en el primer tiempo de cada compás. Respeta repeticiones y finales alternativos.
-  - *Compás 1 = ahora*: modo rápido. Solo marcas el inicio y el resto se calcula con el tempo; vale para canciones grabadas a click.
-  - Ajuste de ±50 ms, deshacer y borrar.
-  - Se guarda solo.
-- **Songsterr**:
-  - pega el enlace (`…-s12345`) o el número de la canción;
-  - descarga todas las pistas, las convierte a `.gp` y, si existe, trae el vídeo con sus puntos de sync.
+### iPad · SideStore / AltStore
 
-## Arquitectura
+1. Build the `.ipa` on your Mac:
+   ```sh
+   ./build-ipa.sh            # → Fretline.ipa (unsigned)
+   ```
+2. AirDrop `Fretline.ipa` to your iPad, or save it to iCloud Drive.
+3. In **SideStore** or **AltStore**, go to **My Apps → ＋** and pick the `.ipa`. It gets signed with your Apple ID on install.
+
+> With a free Apple ID, sideloaded apps expire after 7 days. SideStore refreshes them in the background as long as you open it now and then.
+
+Prefer Xcode? Plug in the iPad, open the project, pick your Personal Team under *Signing & Capabilities* and press ▶.
+
+---
+
+## Build from source
+
+**Requirements:** Xcode 15+, [XcodeGen](https://github.com/yonaskolb/XcodeGen), iPadOS 17 / macOS 14 SDKs.
+
+```sh
+git clone https://github.com/rbc33/Fretline.git
+cd Fretline
+brew install xcodegen
+xcodegen                 # generates Fretline.xcodeproj from project.yml
+open Fretline.xcodeproj
+```
+
+Choose the **Fretline** scheme for iPad or **FretlineMac** for macOS, then hit ▶.
+
+### Build scripts
+
+| Script | What it does |
+| --- | --- |
+| `./build-ipa.sh` | Unsigned `Fretline.ipa` for SideStore / AltStore |
+| `./build-mac.sh` | `dist/Fretline.app` for macOS (ad-hoc signed) |
+| `./build-dmg.sh` | `dist/Fretline-<version>.dmg` with an Applications shortcut, prints the SHA-256 |
+| `./release.sh 0.2.0` | Bumps the version, builds the DMG, creates the GitHub release and updates the Homebrew cask in [`rbc33/homebrew-fretline`](https://github.com/rbc33/homebrew-fretline) |
+
+`release.sh` needs the [GitHub CLI](https://cli.github.com) (`brew install gh && gh auth login`).
+
+### Hacking on the engine
+
+```sh
+cd tools
+npm install
+npm test                 # Songsterr → Guitar Pro converter tests (Node)
+npm run update-alphatab  # refresh the bundled alphaTab runtime
+```
+
+Both web views are inspectable: **Safari → Develop → [your device] → Fretline**.
+
+---
+
+## How it works
+
+```
+┌──────────────────────────── SwiftUI (iPad + Mac) ────────────────────────────┐
+│  Library · History · Player · Sync editor · Bar loops · Mixer                │
+│                                                                              │
+│  TabEngine  ⇄  WKWebView  (fretline://app)                                   │
+│                ├─ alphaTab: SMuFL rendering + SoundFont synth (offline)      │
+│                └─ songsterr/convert.js → Guitar Pro 7                        │
+│                                                                              │
+│  YouTubePlayer ⇄ WKWebView (IFrame API)                                      │
+│        video time ─────────▶ alphaTab external-media clock ─▶ tab cursor     │
+│        play / seek / rate ◀─ alphaTab                                        │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+- **One codebase, two platforms.** iPad and Mac share the same SwiftUI views; platform differences live in `Platform/Platform.swift` and a few `#if os(...)` blocks.
+- **Rendering and audio** come from [alphaTab](https://alphatab.net), bundled locally and served through a custom `fretline://` scheme, so tabs and the synth work fully offline.
+- **Sync points** are stored per song in SwiftData as alphaTab `FlatSyncPoint`s and interpolated by tempo between markers.
+- **A playback watchdog** keeps the synth running through iOS audio interruptions until you press stop or the song ends.
 
 ```
 Fretline/
-├── FretlineApp.swift          AVAudioSession .playback + SwiftData
-├── Models/Song.swift          Song (@Model) + SyncPoint (= FlatSyncPoint de alphaTab)
-├── Services/
-│   ├── SongLibrary.swift      archivos en Documents/Songs, importación
-│   └── SongsterrClient.swift  descarga de Songsterr (aislado) + SongsterrImporter
-├── Engine/
-│   ├── LocalSchemeHandler     fretline://app/… sirve Web/ y fretline://app/__songs/… la biblioteca
-│   ├── TabEngine.swift        puente Swift ⇄ JS (comandos y eventos)
-│   └── TabWebView.swift
-├── YouTube/                   IFrame API en un WKWebView aparte (origen https://<bundle id>)
-├── Views/                     Library, Player, SyncPanel, Tracks, VideoLink, SongsterrImport
-└── Web/                       se copia tal cual al bundle
-    ├── index.html, app.js     alphaTab + API window.fretline.*
-    ├── songsterr/convert.js   JSON de Songsterr → Score de alphaTab → GP7
-    └── vendor/alphatab/       alphaTab 1.9, fuente Bravura, SoundFont Sonivox
+├── Engine/        TabEngine (Swift ⇄ JS bridge), local scheme handler
+├── YouTube/       IFrame player wrapper, video-ID parsing
+├── Views/         Library, Player, SyncPanel, BarLoopPanel, History, sheets
+├── Services/      Library storage, import history, Songsterr client
+├── Models/        Song, ImportRecord (SwiftData)
+├── Platform/      iPadOS / macOS shims
+└── Web/           index.html, app.js, alphaTab runtime, SoundFont, converter
 ```
 
-Así fluye el sync en modo YouTube:
+---
 
-```
-YouTube (tick cada 40 ms) ──onTime──▶ TabEngine.externalTime(ms) ──▶ output.updatePosition(ms)
-alphaTab (play/seek/loop/velocidad) ──handler──▶ externalPlay/Seek/Rate ──▶ YouTubePlayer
-```
+## Roadmap
 
-## Depuración
+- [ ] Built-in tuner (microphone)
+- [ ] iCloud sync of library, loops and sync points
+- [ ] Per-loop speed trainer (auto-increase tempo each pass)
+- [ ] Apple Pencil annotations on the score
+- [ ] Export and share sync maps
 
-- Las dos webviews tienen `isInspectable = true`. Para inspeccionarlas: Safari en el Mac → Desarrollo → tu iPad → Fretline. Ahí ves la consola de alphaTab.
-- `tools/`:
-  - `npm install && npm test` prueba el conversor de Songsterr en Node con un fixture inventado;
-  - `npm run update-alphatab` actualiza alphaTab en `Web/vendor`.
+Ideas and PRs are welcome. Open an [issue](https://github.com/rbc33/Fretline/issues).
 
-## Avisos
+---
 
-- **Songsterr** no tiene API pública. Los endpoints de `SongsterrClient.swift` son los que usa su visor web y pueden cambiar sin aviso. Además, descargar su contenido va contra sus términos, así que esto es solo para uso personal. Todo el código de Songsterr está en `SongsterrClient.swift` y `Web/songsterr/convert.js`, por si un día quieres quitarlo o publicar en App Store.
-- El conversor cubre lo habitual:
-  - duraciones, puntillos y tresillos;
-  - ligaduras, hammer/pull, slides, bends, armónicos, vibrato;
-  - palm mute, let ring, ghost y muteadas;
-  - repeticiones, marcadores, tempo y batería.
-  
-  Si alguna tab sale rara, el sitio a tocar es `convert.js`.
-- **YouTube**:
-  - algunos vídeos tienen el embebido desactivado (errores 101/150) y la app lo avisa;
-  - el reproductor se carga con origen `https://com.rbc33.fretline`, que es lo que YouTube pide a apps nativas. Si cambias el bundle id, cambia también ese origen.
-- **Workers en WKWebView**: alphaTab usa web workers para renderizar y para el sintetizador. Se sirven desde `fretline://` con el MIME correcto, lo que debería bastar. Si en tu versión de iPadOS el render no arranca, prueba `core.useWorkers: false` en `Web/app.js`.
+## Notes
+
+- **Songsterr** has no public API. The importer uses the same endpoints as their web player, which may change without notice, and downloading their content may go against their Terms of Service. It's intended for **personal use only** and lives in two isolated files (`SongsterrClient.swift`, `Web/songsterr/convert.js`) so it's easy to remove.
+- **YouTube**: some videos disable embedding (errors 101/150). Fretline tells you and lets you pick another.
+- Fretline is an independent project and is **not affiliated** with Songsterr, Arobas Music (Guitar Pro) or YouTube.
+
+## Credits
+
+- [**alphaTab**](https://github.com/CoderLine/alphaTab) by Daniel Kuschny and contributors (MPL-2.0): music notation rendering and synthesis.
+- [**Bravura**](https://github.com/steinbergmedia/bravura) SMuFL font by Steinberg (SIL OFL 1.1).
+- **SONiVOX** General MIDI SoundFont, as distributed with alphaTab.
+
+<div align="center">
+
+---
+
+Made by [**@rbc33**](https://github.com/rbc33).
+If Fretline helped you finally nail that solo, **⭐ star the repo**. It really helps.
+
+</div>
