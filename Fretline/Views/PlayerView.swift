@@ -38,7 +38,7 @@ private struct PlayerContent: View {
     @State private var showVideoLink = false
     @State private var syncEditing = false
     @State private var barSelecting = false
-    @State private var videoCorner: Alignment = .topTrailing
+    @State private var videoCorner: Alignment = .bottomTrailing
     @State private var videoMinimized = false
     @State private var didSetup = false
 
@@ -165,7 +165,7 @@ private struct PlayerContent: View {
     }
 
     private func cycleCorner() {
-        let order: [Alignment] = [.topTrailing, .bottomTrailing, .bottomLeading, .topLeading]
+        let order: [Alignment] = [.bottomTrailing, .bottomLeading, .topLeading, .topTrailing]
         let i = order.firstIndex(of: videoCorner) ?? 0
         withAnimation(.snappy) { videoCorner = order[(i + 1) % order.count] }
     }
