@@ -40,6 +40,7 @@ const state = {
   barSelectMode: false, // modo «Compases»: tocar compases para elegir el bucle
   barSel: null,         // { start, end } índices de compás (0-based)
   barAnchor: null,      // primer compás tocado, esperando el segundo
+  savedRange: null,     // rango guardado mientras se cambia de modo
   downBar: null,
   switching: false,
 };
@@ -109,6 +110,14 @@ function createApi() {
       api.tickPosition = state.resumeTick;
       state.resumeTick = null;
     }
+    // Recuperar la selección tras cambiar sintetizador <-> YouTube
+    if (state.barSel) {
+      selectBars(state.barSel.start, state.barSel.end);
+    } else if (state.savedRange) {
+      api.playbackRange = state.savedRange;
+    }
+    state.savedRange = null;
+    api.isLooping = state.looping;
     state.switching = false;
     post('playerReady', { mode: state.mode });
   });
@@ -181,6 +190,8 @@ function switchPlayerMode(mode) {
   state.switching = true;
   state.wantPlaying = false;
   try { api.pause(); } catch {}
+  // Al sustituir el reproductor se pierde el rango de reproducción: lo guardamos
+  state.savedRange = api.playbackRange ? { ...api.playbackRange } : null;
   state.resumeTick = api.score ? api.tickPosition : null;
   api.settings.player.playerMode = mode === 'youtube'
     ? alphaTab.PlayerMode.EnabledExternalMedia
