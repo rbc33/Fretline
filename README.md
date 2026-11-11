@@ -26,6 +26,22 @@ cp -R dist/Fretline.app /Applications/
 
 También puedes abrirlo en Xcode con el esquema **FretlineMac** y darle a ▶. El target de Mac comparte todo el código con el iPad; lo propio de cada plataforma está en `Platform/Platform.swift` y en bloques `#if os(...)`. Va con sandbox, con permiso de red (YouTube y Songsterr) y de lectura de los archivos que elijas.
 
+### DMG y Homebrew
+
+```sh
+./build-dmg.sh          # dist/Fretline-<versión>.dmg con acceso directo a Aplicaciones
+./release.sh 0.2.0      # versión + DMG + release en GitHub + actualiza la cask del tap
+```
+
+Instalar con Homebrew (tap [rbc33/homebrew-tap](https://github.com/rbc33/homebrew-tap)):
+
+```sh
+brew install --cask rbc33/tap/fretline
+brew upgrade --cask fretline
+```
+
+La app va firmada ad-hoc (sin Developer ID), así que la cask le quita la cuarentena al instalarla para que abra sin avisos.
+
 En el Mac, la barra espaciadora hace play/pausa (o marca compás en modo Sync) aunque el foco esté en la partitura. ⌘O abre el importador de archivos.
 
 ## Qué hace
