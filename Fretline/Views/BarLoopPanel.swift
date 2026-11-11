@@ -43,6 +43,7 @@ struct BarLoopPanel: View {
 
                 Toggle(isOn: $looping) { Label("Repeat", systemImage: "repeat") }
                     .toggleStyle(.button)
+                    .help(looping ? "Stop looping these bars" : "Loop these bars")
 
                 Button(role: .destructive) {
                     engine.clearSelection()
@@ -52,6 +53,7 @@ struct BarLoopPanel: View {
             }
 
             Button("Done", action: onDone).bold()
+                .help("Close the bar panel (the selection stays)")
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 10)
@@ -80,8 +82,10 @@ struct BarLoopPanel: View {
             Text(label).font(.caption2).foregroundStyle(.secondary)
             HStack(spacing: 6) {
                 Button(action: minus) { Image(systemName: "minus") }.disabled(!canMinus)
+                    .help("\(label) one bar earlier")
                 Text("\(value)").monospacedDigit().frame(minWidth: 28)
                 Button(action: plus) { Image(systemName: "plus") }.disabled(!canPlus)
+                    .help("\(label) one bar later")
             }
             .buttonStyle(.bordered)
             .controlSize(.small)

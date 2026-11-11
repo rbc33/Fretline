@@ -31,6 +31,7 @@ struct SyncPanel: View {
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
             .keyboardShortcut(.space, modifiers: [])
+            .help("Mark the start of the next bar at the current video time (Space)")
 
             Button("Bar 1 = now", systemImage: "flag.fill") {
                 engine.quickSync(atMs: youtube.estimatedTimeMs)
@@ -39,7 +40,9 @@ struct SyncPanel: View {
 
             HStack(spacing: 4) {
                 Button { engine.nudgeSync(-50) } label: { Text("−50 ms").monospacedDigit() }
+                    .help("Move every sync point 50 ms earlier")
                 Button { engine.nudgeSync(50) } label: { Text("+50 ms").monospacedDigit() }
+                    .help("Move every sync point 50 ms later")
             }
             .buttonStyle(.bordered)
             .disabled(engine.syncPoints.isEmpty)
@@ -47,14 +50,17 @@ struct SyncPanel: View {
             Button { engine.undoLastMark() } label: { Image(systemName: "arrow.uturn.backward") }
                 .disabled(engine.syncPoints.isEmpty)
                 .keyboardShortcut("z", modifiers: .command)
+                .help("Undo the last mark (⌘Z)")
 
             Button(role: .destructive) { confirmClear = true } label: { Image(systemName: "trash") }
                 .disabled(engine.syncPoints.isEmpty)
+                .help("Delete all sync points")
                 .confirmationDialog("Delete all sync points?", isPresented: $confirmClear) {
                     Button("Delete", role: .destructive) { engine.clearSync() }
                 }
 
             Button("Done", action: onDone).bold()
+                .help("Close the sync editor (changes are saved automatically)")
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 10)

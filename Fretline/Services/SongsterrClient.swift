@@ -116,6 +116,31 @@ struct SongsterrClient {
         }
     }
 
+    struct SearchResult: Identifiable, Hashable {
+        let songId: Int
+        let title: String
+        let artist: String
+        let trackCount: Int
+        var id: Int { songId }
+    }
+
+    /// Búsqueda de canciones (el mismo endpoint que usa el buscador de songsterr.com)
+    func search(_ pattern: String, size: Int = 20) async throws -> [SearchResult] {
+        var components = URLComponents(string: "https://www.songsterr.com/api/songs")!
+        components.queryItems = [URLQueryItem(name: "size", value: String(size)),
+                                 URLQueryItem(name: "pattern", value: pattern)]
+        guard let url = components.url?.absoluteString else { return [] }
+        let json = try await getJSON(url, what: "search results")
+        guard let list = json as? [[String: Any]] else { throw SongsterrError.badResponse("search") }
+        return list.compactMap { item in
+            guard let id = (item["songId"] as? NSNumber)?.intValue else { return nil }
+            return SearchResult(songId: id,
+                                title: item["title"] as? String ?? "",
+                                artist: item["artist"] as? String ?? "",
+                                trackCount: (item["tracks"] as? [Any])?.count ?? 0)
+        }
+    }
+
     private func getJSON(_ urlString: String, what: String) async throws -> Any {
         guard let url = URL(string: urlString) else { throw SongsterrError.invalidURL }
         let (data, response) = try await session.data(from: url)

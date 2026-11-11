@@ -35,6 +35,7 @@ Tab sites are great at showing you the notes and bad at letting you **play along
 ### 📂 Open anything
 - **Guitar Pro**: `.gp`, `.gpx`, `.gp5`, `.gp4`, `.gp3`, plus **MusicXML**.
 - Import from Files, AirDrop or **Open with… → Fretline** (on the Mac, the Finder too).
+- **Search Songsterr from your library**: type in the search box to see your songs and Songsterr results side by side. One tap imports a tab.
 - **Songsterr import**: paste a song link and Fretline fetches every track, converts it to Guitar Pro and brings the synced video along when one exists. *(Personal use, see [notes](#notes).)*
 
 ### 🎬 YouTube sync

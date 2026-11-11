@@ -142,9 +142,11 @@ private struct PlayerContent: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             HStack(spacing: 6) {
                 Button { cycleCorner() } label: { Image(systemName: "arrow.up.and.down.and.arrow.left.and.right") }
+                    .help("Move the video to the next corner")
                 Button { videoMinimized.toggle() } label: {
                     Image(systemName: videoMinimized ? "arrow.up.left.and.arrow.down.right" : "arrow.down.right.and.arrow.up.left")
                 }
+                .help(videoMinimized ? "Enlarge the video" : "Shrink the video")
             }
             .font(.caption.bold())
             .buttonStyle(.bordered)
@@ -176,6 +178,7 @@ private struct PlayerContent: View {
         HStack(spacing: 16) {
             Button { engine.stop() } label: { Image(systemName: "backward.end.fill") }
                 .keyboardShortcut(.home, modifiers: [])
+                .help("Stop and go back to the start (Home)")
 
             Button { engine.playPause() } label: {
                 Image(systemName: engine.isPlaying ? "pause.circle.fill" : "play.circle.fill")
@@ -183,6 +186,7 @@ private struct PlayerContent: View {
             }
             .keyboardShortcut(syncEditing ? KeyEquivalent("p") : .space, modifiers: []) // en modo sync, espacio = marcar compás
             .disabled(!engine.isPlayerReady)
+            .help(engine.isPlaying ? "Pause (Space)" : "Play (Space)")
 
             Text("\(format(engine.currentTime)) / \(format(engine.endTime))")
                 .font(.callout.monospacedDigit())
@@ -201,17 +205,18 @@ private struct PlayerContent: View {
             } label: {
                 Label("\(Int((speed * 100).rounded())) %", systemImage: "speedometer").monospacedDigit()
             }
+            .help("Playback speed")
 
             Toggle(isOn: $barSelecting) {
                 Label(barLabel, systemImage: "rectangle.dashed")
                     .monospacedDigit()
             }
             .toggleStyle(.button)
-            .help("Choose bars to loop")
+            .help("Choose one or more bars to loop: tap the first and the last bar")
 
             Toggle(isOn: $looping) { Image(systemName: "repeat") }
                 .toggleStyle(.button)
-                .help("Loop selection")
+                .help(looping ? "Stop looping the selection" : "Loop the selection")
                 .onChange(of: looping) { _, on in engine.setLooping(on) }
 
             if engine.hasSelection {
@@ -222,14 +227,16 @@ private struct PlayerContent: View {
             if mode == .synth {
                 Toggle(isOn: $metronome) { Image(systemName: "metronome") }
                     .toggleStyle(.button)
+                    .help(metronome ? "Turn the metronome off" : "Turn the metronome on")
                     .onChange(of: metronome) { _, on in engine.setMetronome(on) }
                 Toggle(isOn: $countIn) { Image(systemName: "timer") }
                     .toggleStyle(.button)
-                    .help("Count-in before playing")
+                    .help("Count in one bar before playing")
                     .onChange(of: countIn) { _, on in engine.setCountIn(on) }
             } else {
                 Toggle(isOn: $syncEditing) { Label("Sync", systemImage: "waveform.badge.plus") }
                     .toggleStyle(.button)
+                    .help("Sync the tab with the video: mark each bar while it plays")
             }
 
             if song.youtubeVideoId != nil {
@@ -238,6 +245,7 @@ private struct PlayerContent: View {
                 }
                 .pickerStyle(.segmented)
                 .frame(width: 240)
+                .help("Play with the built-in synth or with the YouTube video")
             }
         }
         .padding(.horizontal, 20)
@@ -256,16 +264,23 @@ private struct PlayerContent: View {
         ToolbarItemGroup(placement: .primaryAction) {
             Button("Tracks", systemImage: "list.bullet") { showTracks = true }
                 .disabled(engine.tracks.isEmpty)
+                .help("Show, hide, mute or solo tracks")
             Button("Video", systemImage: song.youtubeVideoId == nil ? "play.rectangle" : "play.rectangle.fill") {
                 showVideoLink = true
             }
+            .help(song.youtubeVideoId == nil ? "Add a YouTube video" : "Change or remove the YouTube video")
             Button(horizontal ? "Page" : "Horizontal",
                    systemImage: horizontal ? "doc.plaintext" : "arrow.left.and.right.text.vertical") {
                 horizontal.toggle()
                 engine.setLayout(horizontal: horizontal)
             }
+            .help(horizontal ? "Switch to page layout" : "Switch to a single horizontal line")
             Button("Zoom Out", systemImage: "minus.magnifyingglass") { zoom(-0.1) }
+                .keyboardShortcut("-")
+                .help("Zoom out (⌘−)")
             Button("Zoom In", systemImage: "plus.magnifyingglass") { zoom(0.1) }
+                .keyboardShortcut("=")
+                .help("Zoom in (⌘+)")
         }
     }
 

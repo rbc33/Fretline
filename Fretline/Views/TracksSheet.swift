@@ -22,6 +22,7 @@ struct TracksSheet: View {
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(.tint)
+                    .help(visible.contains(track.index) ? "Hide this track from the score" : "Show this track in the score")
 
                     Image(systemName: track.isPercussion ? "music.quarternote.3" : "guitars")
                         .foregroundStyle(.secondary)
@@ -33,12 +34,14 @@ struct TracksSheet: View {
                     }
                     .toggleStyle(.button)
                     .tint(.red)
+                    .help("Mute this track")
 
                     Toggle(isOn: binding(for: track.index, in: $solo, apply: engine.setSolo)) {
                         Text("S").bold().frame(width: 22)
                     }
                     .toggleStyle(.button)
                     .tint(.green)
+                    .help("Solo: hear only this track")
                 }
             }
             .sheetSize(width: 440, height: 380)
