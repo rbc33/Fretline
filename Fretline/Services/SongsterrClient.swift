@@ -168,6 +168,7 @@ final class SongsterrImporter {
                         youtubeVideoId: result.videoId,
                         syncPoints: result.syncPoints)
         context.insert(song)
+        context.insert(ImportRecord(song: song))
         try? context.save()
         return song
     }

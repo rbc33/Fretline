@@ -43,6 +43,7 @@ enum SongLibrary {
                         fileName: fileName,
                         titleIsPlaceholder: true)
         context.insert(song)
+        context.insert(ImportRecord(song: song, originalFileName: url.lastPathComponent))
         try? context.save()
         return song
     }

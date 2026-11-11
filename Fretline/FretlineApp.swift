@@ -19,7 +19,7 @@ struct FretlineApp: App {
         WindowGroup {
             LibraryView()
         }
-        .modelContainer(for: Song.self)
+        .modelContainer(for: [Song.self, ImportRecord.self])
         #if os(macOS)
         .defaultSize(width: 1280, height: 860)
         .windowToolbarStyle(.unified)

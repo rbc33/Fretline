@@ -23,6 +23,7 @@ struct PlayerView: View {
 
 private struct PlayerContent: View {
     @Bindable var song: Song
+    @Environment(\.modelContext) private var modelContext
     let engine: TabEngine
     let youtube: YouTubePlayer
 
@@ -255,6 +256,7 @@ private struct PlayerContent: View {
                 song.title = title
                 song.artist = artist
                 song.titleIsPlaceholder = false
+                ImportHistory.updateTitle(for: song, in: modelContext)
             }
         }
         engine.onSyncPointsChanged = { points in song.syncPoints = points }

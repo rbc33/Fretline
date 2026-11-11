@@ -8,6 +8,9 @@ struct LibraryView: View {
     @State private var search = ""
     @State private var showFileImporter = false
     @State private var showSongsterr = false
+    @State private var showHistory = false
+    /// Enlace con el que abrir la hoja de Songsterr (al reimportar desde el historial)
+    @State private var songsterrPrefill = ""
     @State private var path: [Song] = []
     @State private var errorMessage: String?
 
@@ -26,7 +29,7 @@ struct LibraryView: View {
                         Text("Importa un archivo Guitar Pro (.gp, .gp5, .gpx…) o una tab de Songsterr.")
                     } actions: {
                         Button("Importar archivo") { showFileImporter = true }.buttonStyle(.borderedProminent)
-                        Button("Desde Songsterr") { showSongsterr = true }
+                        Button("Desde Songsterr") { songsterrPrefill = ""; showSongsterr = true }
                     }
                 } else {
                     List {
@@ -51,7 +54,9 @@ struct LibraryView: View {
             .navigationDestination(for: Song.self) { PlayerView(song: $0) }
             .toolbar {
                 ToolbarItemGroup(placement: .primaryAction) {
-                    Button("Songsterr", systemImage: "arrow.down.circle") { showSongsterr = true }
+                    Button("Historial", systemImage: "clock.arrow.circlepath") { showHistory = true }
+                        .keyboardShortcut("y")
+                    Button("Songsterr", systemImage: "arrow.down.circle") { songsterrPrefill = ""; showSongsterr = true }
                     Button("Importar", systemImage: "square.and.arrow.down") { showFileImporter = true }
                         .keyboardShortcut("o")
                 }
@@ -65,8 +70,17 @@ struct LibraryView: View {
                 }
             }
             .sheet(isPresented: $showSongsterr) {
-                SongsterrImportView { song in path = [song] }
+                SongsterrImportView(initialInput: songsterrPrefill) { song in path = [song] }
             }
+            .sheet(isPresented: $showHistory) {
+                HistoryView(onOpen: { song in path = [song] },
+                            onReimport: { id in
+                                songsterrPrefill = String(id)
+                                // Espera a que se cierre el historial antes de abrir la otra hoja
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { showSongsterr = true }
+                            })
+            }
+            .task { ImportHistory.backfillIfNeeded(in: context) }
             .onOpenURL { url in
                 guard url.isFileURL else { return }
                 importFiles([url], open: true)
