@@ -62,7 +62,8 @@ Tab sites are great at showing you the notes and bad at letting you **play along
 - Recent Songsterr imports appear right in the import sheet.
 
 ### 🖥️ Mac-native
-- **Space** to play or pause, even with the score focused; **⌘O** to import; **⌘Y** for history.
+- **Keyboard first**: **Space** plays or pauses (even with the score focused), **Home** goes back to the start, **⌘O** imports, **⌘Y** opens history, **⌘+ / ⌘−** zoom and **⌘Z** undoes the last sync mark.
+- **Tooltips everywhere**: hover any button to see what it does (also with a trackpad on iPad).
 - Sandboxed, ad-hoc signed and installable with Homebrew.
 
 ---
