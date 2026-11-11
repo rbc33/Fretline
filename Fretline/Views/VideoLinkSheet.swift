@@ -14,7 +14,8 @@ struct VideoLinkSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("https://www.youtube.com/watch?v=…", text: $input)
+                    TextField("Enlace", text: $input, prompt: Text("https://www.youtube.com/watch?v=…"))
+                        .labelsHidden()
                         .urlInput()
                     if input.isEmpty, let clip = Clipboard.string, YouTubeVideoID.parse(clip) != nil {
                         Button("Pegar enlace del portapapeles", systemImage: "doc.on.clipboard") { input = clip }
@@ -38,7 +39,8 @@ struct VideoLinkSheet: View {
                     }
                 }
             }
-            .sheetSize()
+            .platformFormStyle()
+            .sheetSize(width: 520, height: 280)
             .navigationTitle("Vídeo")
             .inlineNavigationTitle()
             .toolbar {

@@ -30,6 +30,15 @@ extension View {
         #endif
     }
 
+    /// En macOS `Form` usa columnas (etiqueta | campo); el estilo agrupado se ve como en el iPad.
+    func platformFormStyle() -> some View {
+        #if os(macOS)
+        self.formStyle(.grouped)
+        #else
+        self
+        #endif
+    }
+
     func inlineNavigationTitle() -> some View {
         #if os(iOS)
         self.navigationBarTitleDisplayMode(.inline)

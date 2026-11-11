@@ -14,7 +14,8 @@ struct SongsterrImportView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("https://www.songsterr.com/a/wsa/…-s12345", text: $input)
+                    TextField("Enlace", text: $input, prompt: Text("https://www.songsterr.com/a/wsa/…-s12345"))
+                        .labelsHidden()
                         .urlInput()
                         .onSubmit(start)
                     if let clip = Clipboard.string, SongsterrClient.songId(from: clip) != nil, input.isEmpty {
@@ -33,7 +34,8 @@ struct SongsterrImportView: View {
                     Section { Label(errorMessage, systemImage: "exclamationmark.triangle").foregroundStyle(.red) }
                 }
             }
-            .sheetSize(width: 520, height: 320)
+            .platformFormStyle()
+            .sheetSize(width: 520, height: 280)
             .navigationTitle("Importar de Songsterr")
             .inlineNavigationTitle()
             .toolbar {
