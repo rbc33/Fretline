@@ -36,6 +36,8 @@ const state = {
   lastPositionPost: 0,
   resumeTick: null,
   pendingPlay: false,
+  wantPlaying: false, // el usuario quiere que suene (hasta stop, pausa o fin)
+  switching: false,
 };
 
 function settingsFor(mode) {
@@ -103,13 +105,27 @@ function createApi() {
       api.tickPosition = state.resumeTick;
       state.resumeTick = null;
     }
+    state.switching = false;
     post('playerReady', { mode: state.mode });
   });
 
   api.soundFontLoadFailed?.on((e) => post('error', { message: 'No se pudo cargar el SoundFont: ' + String(e?.message || e) }));
   api.midiLoadFailed?.on((e) => post('error', { message: 'No se pudo preparar el audio de la partitura: ' + String(e?.message || e) }));
 
-  api.playerStateChanged.on((e) => post('playerState', { playing: e.state === alphaTab.synth.PlayerState.Playing }));
+  api.playerStateChanged.on((e) => {
+    const playing = e.state === alphaTab.synth.PlayerState.Playing;
+    post('playerState', { playing });
+    if (playing) return;
+    if (e.stopped) {
+      state.wantPlaying = false; // stop o fin de canción
+    } else if (state.wantPlaying && state.mode === 'synth' && !state.switching) {
+      // Pausa que no ha pedido nadie (audio interrumpido por iOS): reanudamos
+      setTimeout(() => {
+        if (state.wantPlaying && state.api?.playerState !== alphaTab.synth.PlayerState.Playing) recoverPlayback('pausa inesperada');
+      }, 300);
+    }
+  });
+  api.playerFinished.on(() => { state.wantPlaying = false; });
 
   api.playerPositionChanged.on((e) => {
     const now = performance.now();
@@ -133,6 +149,8 @@ function createApi() {
 function switchPlayerMode(mode) {
   const api = state.api;
   if (!api) return createApi();
+  state.switching = true;
+  state.wantPlaying = false;
   try { api.pause(); } catch {}
   state.resumeTick = api.score ? api.tickPosition : null;
   api.settings.player.playerMode = mode === 'youtube'
@@ -159,10 +177,58 @@ async function ensureAudioRunning() {
   return ctx.state === 'running';
 }
 
+function hookAudioContext() {
+  const ctx = audioContext();
+  if (!ctx || ctx.__fretlineHooked) return;
+  ctx.__fretlineHooked = true;
+  ctx.addEventListener('statechange', () => {
+    console.log('[fretline] AudioContext ->', ctx.state);
+    if (ctx.state !== 'running' && state.wantPlaying && state.mode === 'synth') recoverPlayback('audio ' + ctx.state);
+  });
+}
+
+let recovering = false;
+async function recoverPlayback(reason) {
+  if (recovering || !state.wantPlaying || state.mode !== 'synth') return;
+  recovering = true;
+  console.log('[fretline] reanudando audio:', reason);
+  try {
+    const ok = await ensureAudioRunning();
+    const api = state.api;
+    if (!state.wantPlaying || !api) return;
+    if (ok) {
+      if (api.playerState !== alphaTab.synth.PlayerState.Playing) api.play();
+    } else {
+      state.pendingPlay = true;
+      post('audioBlocked', { state: audioContext()?.state || 'unknown' });
+    }
+  } finally {
+    recovering = false;
+  }
+}
+
+// Vigilante: si "está sonando" pero la posición no avanza, el audio está parado por debajo
+let lastWatchTime = -1;
+let stuckTicks = 0;
+setInterval(() => {
+  const api = state.api;
+  if (!api || !state.wantPlaying || state.mode !== 'synth' || state.switching) { stuckTicks = 0; return; }
+  hookAudioContext();
+  const t = api.timePosition;
+  if (api.playerState === alphaTab.synth.PlayerState.Playing && t === lastWatchTime) {
+    if (++stuckTicks >= 2) { stuckTicks = 0; recoverPlayback('posición parada'); }
+  } else {
+    stuckTicks = 0;
+  }
+  lastWatchTime = t;
+}, 1000);
+
 async function playChecked() {
   const api = state.api;
   if (!api) return;
+  state.wantPlaying = true;
   const ok = await ensureAudioRunning();
+  hookAudioContext();
   api.play();
   if (!ok) {
     state.pendingPlay = true;
@@ -239,6 +305,9 @@ function bytesToB64(bytes) {
 
 // ---------- API pública para Swift ----------
 window.fretline = {
+  // Para depurar desde la consola de Safari: fretline.debug().api / .ctx
+  debug() { return { api: state.api, ctx: audioContext(), state }; },
+
   // song: { url, syncPoints?: FlatSyncPoint[], mode?: 'synth'|'youtube' }
   loadSong(song) {
     state.songUrl = song.url;
@@ -260,14 +329,14 @@ window.fretline = {
   },
 
   play() { playChecked(); },
-  pause() { state.pendingPlay = false; state.api?.pause(); },
+  pause() { state.wantPlaying = false; state.pendingPlay = false; state.api?.pause(); },
   playPause() {
     const api = state.api;
     if (!api) return;
     if (api.playerState === alphaTab.synth.PlayerState.Playing) this.pause();
     else playChecked();
   },
-  stop() { state.pendingPlay = false; state.api?.stop(); },
+  stop() { state.wantPlaying = false; state.pendingPlay = false; state.api?.stop(); },
 
   setSpeed(v) {
     state.speed = v;

@@ -23,6 +23,8 @@ final class YouTubePlayer: NSObject, WKScriptMessageHandler {
     @ObservationIgnored var onDuration: ((Double) -> Void)?
 
     @ObservationIgnored private var apiReady = false
+    /// Posición en la que debe empezar el vídeo cuando aún no está listo para hacer seek
+    @ObservationIgnored private var pendingStartMs: Double = 0
     @ObservationIgnored private var lastTickDate = Date()
 
     /// Tiempo estimado ahora mismo (interpola desde el último tick); útil para el tap-along.
@@ -56,8 +58,23 @@ final class YouTubePlayer: NSObject, WKScriptMessageHandler {
         isReady = false
         errorMessage = nil
         durationMs = 0
-        currentTimeMs = 0
-        if apiReady { js("cue(\(Self.jsString(videoId)))") }
+        currentTimeMs = pendingStartMs
+        cue()
+    }
+
+    /// Destruye el reproductor (al pasar al sintetizador) para que su sesión de medios
+    /// no interrumpa el audio de la partitura. `load` lo vuelve a crear.
+    func unload() {
+        js("unload()")
+        videoId = nil
+        isReady = false
+        isPlaying = false
+        pendingStartMs = 0
+    }
+
+    private func cue() {
+        guard apiReady, let videoId else { return }
+        js("cue(\(Self.jsString(videoId)), \(pendingStartMs / 1000))")
     }
 
     func play() { js("player && player.playVideo()") }
@@ -66,6 +83,12 @@ final class YouTubePlayer: NSObject, WKScriptMessageHandler {
     func seek(toMs ms: Double) {
         currentTimeMs = ms
         lastTickDate = Date()
+        guard isReady else {
+            // Aún cargando: el vídeo empezará directamente en esa posición
+            pendingStartMs = ms
+            cue()
+            return
+        }
         js("player && player.seekTo(\(ms / 1000), true)")
     }
 
@@ -93,10 +116,15 @@ final class YouTubePlayer: NSObject, WKScriptMessageHandler {
         switch type {
         case "apiReady":
             apiReady = true
-            if let videoId { js("cue(\(Self.jsString(videoId)))") }
+            cue()
 
         case "ready":
             isReady = true
+            // Si llegó un seek mientras se creaba el reproductor, lo colocamos sin arrancarlo
+            if pendingStartMs > 0, let videoId {
+                js("player.cueVideoById({videoId:\(Self.jsString(videoId)),startSeconds:\(pendingStartMs / 1000)})")
+            }
+            pendingStartMs = 0
             if let d = num("duration"), d > 0 { durationMs = d; onDuration?(d) }
             js("player.setPlaybackRate(\(rate))")
 
@@ -151,10 +179,17 @@ final class YouTubePlayer: NSObject, WKScriptMessageHandler {
     let player=null, timer=null;
     function tick(){ if(player&&player.getCurrentTime) post('time',{ms:player.getCurrentTime()*1000}); }
     function onYouTubeIframeAPIReady(){ post('apiReady'); }
-    window.cue=function(id){
-      if(player){ player.cueVideoById(id); return; }
+    window.unload=function(){
+      clearInterval(timer); timer=null;
+      if(player){ try{ player.destroy(); }catch(e){} player=null; }
+      document.body.innerHTML='<div id="p"></div>';
+    };
+    window.cue=function(id,start){
+      start=start||0;
+      if(player && player.cueVideoById){ player.cueVideoById({videoId:id,startSeconds:start}); return; }
+      if(player) return; // creándose: onReady lo colocará
       player=new YT.Player('p',{videoId:id,
-        playerVars:{playsinline:1,rel:0,modestbranding:1,enablejsapi:1,origin:location.origin},
+        playerVars:{playsinline:1,rel:0,modestbranding:1,enablejsapi:1,origin:location.origin,start:Math.floor(start)},
         events:{
           onReady:()=>post('ready',{duration:player.getDuration()*1000}),
           onStateChange:(e)=>{

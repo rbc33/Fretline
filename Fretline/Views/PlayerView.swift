@@ -104,7 +104,7 @@ private struct PlayerContent: View {
             if newMode == .youtube {
                 if let id = song.youtubeVideoId { youtube.load(videoId: id) } else { showVideoLink = true }
             } else {
-                youtube.pause()
+                youtube.unload()
                 syncEditing = false
             }
             // Las velocidades de YouTube van en pasos de 0.25
@@ -258,13 +258,14 @@ private struct PlayerContent: View {
             }
         }
         engine.onSyncPointsChanged = { points in song.syncPoints = points }
-        engine.onExternalPlay = { youtube.play() }
+        engine.onExternalPlay = { if mode == .youtube { youtube.play() } }
         engine.onExternalPause = { youtube.pause() }
-        engine.onExternalSeek = { ms in youtube.seek(toMs: ms) }
+        engine.onExternalSeek = { ms in if mode == .youtube { youtube.seek(toMs: ms) } }
         engine.onExternalRate = { rate in youtube.setRate(rate) }
-        youtube.onTime = { ms in engine.externalTime(ms) }
+        // El vídeo solo manda en modo YouTube; en sintetizador se ignora
+        youtube.onTime = { ms in if mode == .youtube { engine.externalTime(ms) } }
         youtube.onDuration = { ms in engine.externalDuration(ms) }
-        youtube.onPlayingChanged = { playing in engine.externalState(playing: playing) }
+        youtube.onPlayingChanged = { playing in if mode == .youtube { engine.externalState(playing: playing) } }
 
         let initialMode: PlaybackMode = (song.youtubeVideoId != nil && !song.syncPoints.isEmpty) ? .youtube : .synth
         mode = initialMode

@@ -1,7 +1,6 @@
 import Foundation
 import WebKit
 import Observation
-import AVFoundation
 
 struct TrackInfo: Identifiable, Hashable {
     let index: Int
@@ -97,18 +96,9 @@ final class TabEngine: NSObject, WKScriptMessageHandler {
         invoke("setMode", [mode.rawValue])
     }
 
-    func playPause() { reactivateAudioSession(); invoke("playPause") }
-    func play() { reactivateAudioSession(); invoke("play") }
-
-    /// Tras sonar el vídeo de YouTube la sesión de audio puede quedar desactivada o interrumpida
-    private func reactivateAudioSession() {
-        guard currentMode == .synth else { return }
-        let session = AVAudioSession.sharedInstance()
-        if session.category != .playback {
-            try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
-        }
-        try? session.setActive(true)
-    }
+    // La sesión de audio la gestiona WebKit; tocarla en cada play puede interrumpir el sintetizador
+    func playPause() { invoke("playPause") }
+    func play() { invoke("play") }
     func pause() { invoke("pause") }
     func stop() { invoke("stop") }
     func setSpeed(_ value: Double) { invoke("setSpeed", [value]) }
