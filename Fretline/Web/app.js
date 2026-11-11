@@ -34,6 +34,8 @@ const state = {
   metronome: 0,
   countIn: false,
   lastPositionPost: 0,
+  resumeTick: null,
+  pendingPlay: false,
 };
 
 function settingsFor(mode) {
@@ -93,11 +95,19 @@ function createApi() {
   api.playerReady.on(() => {
     api.playbackSpeed = state.speed;
     api.isLooping = state.looping;
-    api.metronomeVolume = state.metronome;
-    api.countInVolume = state.countIn ? 1 : 0;
+    api.metronomeVolume = state.mode === 'synth' ? state.metronome : 0;
+    api.countInVolume = state.mode === 'synth' && state.countIn ? 1 : 0;
     if (state.mode === 'youtube') attachExternalHandler();
+    // Tras cambiar de modo, seguimos en el mismo compás
+    if (state.resumeTick != null) {
+      api.tickPosition = state.resumeTick;
+      state.resumeTick = null;
+    }
     post('playerReady', { mode: state.mode });
   });
+
+  api.soundFontLoadFailed?.on((e) => post('error', { message: 'No se pudo cargar el SoundFont: ' + String(e?.message || e) }));
+  api.midiLoadFailed?.on((e) => post('error', { message: 'No se pudo preparar el audio de la partitura: ' + String(e?.message || e) }));
 
   api.playerStateChanged.on((e) => post('playerState', { playing: e.state === alphaTab.synth.PlayerState.Playing }));
 
@@ -118,10 +128,63 @@ function createApi() {
   return api;
 }
 
-function reloadCurrent() {
-  createApi();
-  if (state.songUrl) state.api.load(state.songUrl);
+// Cambia sintetizador <-> YouTube sin destruir alphaTab: se conserva la partitura,
+// el scroll y la posición; alphaTab solo sustituye el reproductor interno.
+function switchPlayerMode(mode) {
+  const api = state.api;
+  if (!api) return createApi();
+  try { api.pause(); } catch {}
+  state.resumeTick = api.score ? api.tickPosition : null;
+  api.settings.player.playerMode = mode === 'youtube'
+    ? alphaTab.PlayerMode.EnabledExternalMedia
+    : alphaTab.PlayerMode.EnabledSynthesizer;
+  api.updateSettings();
 }
+
+// ---------- audio del sintetizador ----------
+// En WKWebView el AudioContext puede quedar "suspended" o "interrupted" (p. ej. después de
+// sonar el vídeo de YouTube). Los botones nativos no cuentan como gesto dentro de la web,
+// así que lo reanudamos nosotros y, si WebKit no deja, avisamos para que el usuario toque la tab.
+function audioContext() {
+  const p = state.api?.player;
+  return p?.instance?.output?.context || p?.output?.context || null;
+}
+
+async function ensureAudioRunning() {
+  if (state.mode !== 'synth') return true;
+  const ctx = audioContext();
+  if (!ctx) return true; // aún no creado: alphaTab lo crea al reproducir
+  if (ctx.state === 'running') return true;
+  try { await Promise.race([ctx.resume(), new Promise((r) => setTimeout(r, 800))]); } catch {}
+  return ctx.state === 'running';
+}
+
+async function playChecked() {
+  const api = state.api;
+  if (!api) return;
+  const ok = await ensureAudioRunning();
+  api.play();
+  if (!ok) {
+    state.pendingPlay = true;
+    post('audioBlocked', { state: audioContext()?.state || 'unknown' });
+  }
+}
+
+// Cualquier toque en la partitura es un gesto real: reanuda el audio y, si había un play pendiente, arranca
+['touchend', 'pointerup', 'click'].forEach((type) =>
+  document.addEventListener(type, () => {
+    const ctx = audioContext();
+    if (!ctx || (ctx.state === 'running' && !state.pendingPlay)) return;
+    ctx.resume().catch(() => {}).finally(() => {
+      if (ctx.state !== 'running') return;
+      post('audioUnblocked');
+      if (state.pendingPlay) {
+        state.pendingPlay = false;
+        const api = state.api;
+        if (api && api.playerState !== alphaTab.synth.PlayerState.Playing) api.play();
+      }
+    });
+  }, { passive: true, capture: true }));
 
 // ---------- YouTube / medio externo ----------
 // alphaTab nos pide play/pausa/seek/velocidad; nosotros lo reenviamos a Swift,
@@ -192,13 +255,19 @@ window.fretline = {
   setMode(mode) {
     if (mode === state.mode) return;
     state.mode = mode;
-    reloadCurrent();
+    state.pendingPlay = false;
+    switchPlayerMode(mode);
   },
 
-  play() { state.api?.play(); },
-  pause() { state.api?.pause(); },
-  playPause() { state.api?.playPause(); },
-  stop() { state.api?.stop(); },
+  play() { playChecked(); },
+  pause() { state.pendingPlay = false; state.api?.pause(); },
+  playPause() {
+    const api = state.api;
+    if (!api) return;
+    if (api.playerState === alphaTab.synth.PlayerState.Playing) this.pause();
+    else playChecked();
+  },
+  stop() { state.pendingPlay = false; state.api?.stop(); },
 
   setSpeed(v) {
     state.speed = v;
@@ -216,11 +285,11 @@ window.fretline = {
   },
   setMetronome(on) {
     state.metronome = on ? 1 : 0;
-    if (state.api) state.api.metronomeVolume = state.metronome;
+    if (state.api && state.mode === 'synth') state.api.metronomeVolume = state.metronome;
   },
   setCountIn(on) {
     state.countIn = on;
-    if (state.api) state.api.countInVolume = on ? 1 : 0;
+    if (state.api && state.mode === 'synth') state.api.countInVolume = on ? 1 : 0;
   },
 
   showTracks(indices) {
@@ -251,6 +320,7 @@ window.fretline = {
 
   // --- YouTube: Swift -> JS ---
   externalTime(ms) {
+    if (state.mode !== 'youtube') return;
     const out = state.api?.player?.output;
     out?.updatePosition?.(ms);
   },
@@ -258,7 +328,7 @@ window.fretline = {
   // Cuando el usuario toca play/pausa directamente en el vídeo
   externalState(playing) {
     const api = state.api;
-    if (!api) return;
+    if (!api || state.mode !== 'youtube') return;
     const isPlaying = api.playerState === alphaTab.synth.PlayerState.Playing;
     if (playing && !isPlaying) api.play();
     if (!playing && isPlaying) api.pause();

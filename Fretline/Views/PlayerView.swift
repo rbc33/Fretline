@@ -53,6 +53,20 @@ private struct PlayerContent: View {
                 videoCard.padding(12)
             }
         }
+        .overlay(alignment: .top) {
+            if engine.audioBlocked {
+                Label("Toca la partitura para activar el sonido", systemImage: "speaker.wave.2.fill")
+                    .font(.callout.weight(.semibold))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(.orange, in: Capsule())
+                    .foregroundStyle(.white)
+                    .padding(.top, 12)
+                    .allowsHitTesting(false) // el toque tiene que llegar a la web
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.snappy, value: engine.audioBlocked)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: 0) {
                 if syncEditing {

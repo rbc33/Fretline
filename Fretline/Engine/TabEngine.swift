@@ -1,6 +1,7 @@
 import Foundation
 import WebKit
 import Observation
+import AVFoundation
 
 struct TrackInfo: Identifiable, Hashable {
     let index: Int
@@ -42,6 +43,8 @@ final class TabEngine: NSObject, WKScriptMessageHandler {
     private(set) var hasSelection = false
     private(set) var syncPoints: [SyncPoint] = []
     private(set) var syncProgress: SyncProgress?
+    /// WebKit no deja arrancar el audio del sintetizador hasta que se toque la partitura
+    private(set) var audioBlocked = false
     var lastError: String?
 
     // Medio externo (YouTube): alphaTab pide, nosotros reenviamos
@@ -90,11 +93,22 @@ final class TabEngine: NSObject, WKScriptMessageHandler {
         currentMode = mode
         isPlayerReady = false
         isPlaying = false
+        audioBlocked = false
         invoke("setMode", [mode.rawValue])
     }
 
-    func playPause() { invoke("playPause") }
-    func play() { invoke("play") }
+    func playPause() { reactivateAudioSession(); invoke("playPause") }
+    func play() { reactivateAudioSession(); invoke("play") }
+
+    /// Tras sonar el vídeo de YouTube la sesión de audio puede quedar desactivada o interrumpida
+    private func reactivateAudioSession() {
+        guard currentMode == .synth else { return }
+        let session = AVAudioSession.sharedInstance()
+        if session.category != .playback {
+            try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+        }
+        try? session.setActive(true)
+    }
     func pause() { invoke("pause") }
     func stop() { invoke("stop") }
     func setSpeed(_ value: Double) { invoke("setSpeed", [value]) }
@@ -172,6 +186,12 @@ final class TabEngine: NSObject, WKScriptMessageHandler {
 
         case "playerState":
             isPlaying = body["playing"] as? Bool ?? false
+
+        case "audioBlocked":
+            audioBlocked = true
+
+        case "audioUnblocked":
+            audioBlocked = false
 
         case "position":
             currentTime = num("currentTime") ?? 0
