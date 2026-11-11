@@ -78,7 +78,7 @@ private struct PlayerContent: View {
             .background(.bar)
         }
         .navigationTitle(song.title)
-        .navigationBarTitleDisplayMode(.inline)
+        .inlineNavigationTitle()
         .toolbar { topToolbar }
         .sheet(isPresented: $showTracks) {
             TracksSheet(engine: engine).presentationDetents([.medium, .large])
@@ -258,6 +258,13 @@ private struct PlayerContent: View {
             }
         }
         engine.onSyncPointsChanged = { points in song.syncPoints = points }
+        engine.onSpace = {
+            if syncEditing {
+                if youtube.isPlaying { engine.markNextBar(atMs: youtube.estimatedTimeMs) } else { engine.play() }
+            } else {
+                engine.playPause()
+            }
+        }
         engine.onExternalPlay = { if mode == .youtube { youtube.play() } }
         engine.onExternalPause = { youtube.pause() }
         engine.onExternalSeek = { ms in if mode == .youtube { youtube.seek(toMs: ms) } }

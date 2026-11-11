@@ -53,6 +53,7 @@ struct LibraryView: View {
                 ToolbarItemGroup(placement: .primaryAction) {
                     Button("Songsterr", systemImage: "arrow.down.circle") { showSongsterr = true }
                     Button("Importar", systemImage: "square.and.arrow.down") { showFileImporter = true }
+                        .keyboardShortcut("o")
                 }
             }
             .fileImporter(isPresented: $showFileImporter,

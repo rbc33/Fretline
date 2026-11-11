@@ -15,10 +15,8 @@ struct VideoLinkSheet: View {
             Form {
                 Section {
                     TextField("https://www.youtube.com/watch?v=…", text: $input)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .keyboardType(.URL)
-                    if input.isEmpty, let clip = UIPasteboard.general.string, YouTubeVideoID.parse(clip) != nil {
+                        .urlInput()
+                    if input.isEmpty, let clip = Clipboard.string, YouTubeVideoID.parse(clip) != nil {
                         Button("Pegar enlace del portapapeles", systemImage: "doc.on.clipboard") { input = clip }
                     }
                 } header: {
@@ -40,8 +38,9 @@ struct VideoLinkSheet: View {
                     }
                 }
             }
+            .sheetSize()
             .navigationTitle("Vídeo")
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {

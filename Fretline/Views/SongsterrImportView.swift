@@ -15,11 +15,9 @@ struct SongsterrImportView: View {
             Form {
                 Section {
                     TextField("https://www.songsterr.com/a/wsa/…-s12345", text: $input)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .keyboardType(.URL)
+                        .urlInput()
                         .onSubmit(start)
-                    if let clip = UIPasteboard.general.string, SongsterrClient.songId(from: clip) != nil, input.isEmpty {
+                    if let clip = Clipboard.string, SongsterrClient.songId(from: clip) != nil, input.isEmpty {
                         Button("Pegar enlace del portapapeles", systemImage: "doc.on.clipboard") { input = clip }
                     }
                 } header: {
@@ -35,8 +33,9 @@ struct SongsterrImportView: View {
                     Section { Label(errorMessage, systemImage: "exclamationmark.triangle").foregroundStyle(.red) }
                 }
             }
+            .sheetSize(width: 520, height: 320)
             .navigationTitle("Importar de Songsterr")
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {

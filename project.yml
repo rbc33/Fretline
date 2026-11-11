@@ -3,6 +3,7 @@ options:
   bundleIdPrefix: com.rbc33
   deploymentTarget:
     iOS: "17.0"
+    macOS: "14.0"
   createIntermediateGroups: true
 
 settings:
@@ -12,6 +13,7 @@ settings:
     CURRENT_PROJECT_VERSION: "1"
 
 targets:
+  # ---------- iPad ----------
   Fretline:
     type: application
     platform: iOS
@@ -19,6 +21,8 @@ targets:
       - path: Fretline
         excludes:
           - "Web/**"
+          - "**/Info.plist"
+          - "**/*.entitlements"
       # Carpeta copiada tal cual al bundle (alphaTab, SoundFont, app.js…)
       - path: Fretline/Web
         type: folder
@@ -26,6 +30,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.rbc33.fretline
+        PRODUCT_NAME: Fretline
         TARGETED_DEVICE_FAMILY: "2"
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Fretline/Info.plist
@@ -68,3 +73,64 @@ targets:
             CFBundleTypeRole: Viewer
             LSHandlerRank: Alternate
             LSItemContentTypes: [com.rbc33.fretline.musicxml]
+
+  # ---------- Mac ----------
+  FretlineMac:
+    type: application
+    platform: macOS
+    sources:
+      - path: Fretline
+        excludes:
+          - "Web/**"
+          - "**/Info.plist"
+          - "**/*.entitlements"
+      # Carpeta copiada tal cual al bundle (alphaTab, SoundFont, app.js…)
+      - path: Fretline/Web
+        type: folder
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.rbc33.fretline
+        PRODUCT_NAME: Fretline
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Fretline/macOS/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Fretline/macOS/Fretline.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_PREVIEWS: YES
+        COMBINE_HIDPI_IMAGES: YES
+    info:
+      path: Fretline/macOS/Info.plist
+      properties:
+        CFBundleDisplayName: Fretline
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSApplicationCategoryType: public.app-category.music
+        NSHumanReadableCopyright: "© rbc33"
+        UTImportedTypeDeclarations:
+          - UTTypeIdentifier: com.rbc33.fretline.guitarpro
+            UTTypeDescription: Guitar Pro
+            UTTypeConformsTo: [public.data]
+            UTTypeTagSpecification:
+              public.filename-extension: [gp, gp3, gp4, gp5, gpx]
+          - UTTypeIdentifier: com.rbc33.fretline.musicxml
+            UTTypeDescription: MusicXML
+            UTTypeConformsTo: [public.xml]
+            UTTypeTagSpecification:
+              public.filename-extension: [musicxml]
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Guitar Pro
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [com.rbc33.fretline.guitarpro]
+          - CFBundleTypeName: MusicXML
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [com.rbc33.fretline.musicxml]
+    entitlements:
+      path: Fretline/macOS/Fretline.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        # YouTube y Songsterr
+        com.apple.security.network.client: true
+        # Abrir .gp desde el selector de archivos o el Finder
+        com.apple.security.files.user-selected.read-only: true

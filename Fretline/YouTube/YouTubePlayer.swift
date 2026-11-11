@@ -35,7 +35,9 @@ final class YouTubePlayer: NSObject, WKScriptMessageHandler {
 
     override init() {
         let config = WKWebViewConfiguration()
+        #if os(iOS)
         config.allowsInlineMediaPlayback = true
+        #endif
         config.mediaTypesRequiringUserActionForPlayback = []
         let controller = WKUserContentController()
         config.userContentController = controller
@@ -43,9 +45,11 @@ final class YouTubePlayer: NSObject, WKScriptMessageHandler {
         super.init()
         controller.add(WeakScriptMessageHandler(self), name: "yt")
         webView.isInspectable = true
+        #if os(iOS)
         webView.scrollView.isScrollEnabled = false
         webView.backgroundColor = .black
         webView.isOpaque = false
+        #endif
         let origin = "https://\((Bundle.main.bundleIdentifier ?? "com.rbc33.fretline").lowercased())"
         webView.loadHTMLString(Self.html, baseURL: URL(string: origin))
     }

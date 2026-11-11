@@ -41,8 +41,9 @@ struct TracksSheet: View {
                     .tint(.green)
                 }
             }
+            .sheetSize(width: 440, height: 380)
             .navigationTitle("Pistas")
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Hecho") { dismiss() } }
             }

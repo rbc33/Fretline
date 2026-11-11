@@ -470,5 +470,15 @@ window.fretline = {
   },
 };
 
+// En el Mac (sin pantalla táctil) la partitura suele tener el foco del teclado y se
+// comería la barra espaciadora: la mandamos a Swift, que decide (play/pausa o marcar compás).
+if (navigator.maxTouchPoints === 0) {
+  document.addEventListener('keydown', (e) => {
+    if (e.code !== 'Space' || e.metaKey || e.ctrlKey || e.altKey) return;
+    e.preventDefault();
+    if (!e.repeat) post('key', { key: 'space' });
+  });
+}
+
 createApi();
 post('ready');

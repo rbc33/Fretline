@@ -53,6 +53,8 @@ final class TabEngine: NSObject, WKScriptMessageHandler {
     @ObservationIgnored var onExternalRate: ((Double) -> Void)?
     @ObservationIgnored var onScoreLoaded: ((_ title: String, _ artist: String) -> Void)?
     @ObservationIgnored var onSyncPointsChanged: (([SyncPoint]) -> Void)?
+    /// Barra espaciadora pulsada con el foco dentro de la partitura (Mac)
+    @ObservationIgnored var onSpace: (() -> Void)?
 
     @ObservationIgnored private var currentMode: PlaybackMode = .synth
     @ObservationIgnored private var pending: [(String, [Any])] = []
@@ -61,7 +63,9 @@ final class TabEngine: NSObject, WKScriptMessageHandler {
     override init() {
         let config = WKWebViewConfiguration()
         config.setURLSchemeHandler(LocalSchemeHandler(), forURLScheme: LocalSchemeHandler.scheme)
+        #if os(iOS)
         config.allowsInlineMediaPlayback = true
+        #endif
         config.mediaTypesRequiringUserActionForPlayback = []
         let controller = WKUserContentController()
         config.userContentController = controller
@@ -71,8 +75,10 @@ final class TabEngine: NSObject, WKScriptMessageHandler {
 
         controller.add(WeakScriptMessageHandler(self), name: "fretline")
         webView.isInspectable = true // Safari > Desarrollo > iPad para depurar
+        #if os(iOS)
         webView.scrollView.contentInsetAdjustmentBehavior = .never
         webView.isOpaque = false
+        #endif
         webView.load(URLRequest(url: LocalSchemeHandler.appURL("index.html")))
     }
 
@@ -176,6 +182,9 @@ final class TabEngine: NSObject, WKScriptMessageHandler {
 
         case "playerState":
             isPlaying = body["playing"] as? Bool ?? false
+
+        case "key":
+            if body["key"] as? String == "space" { onSpace?() }
 
         case "audioBlocked":
             audioBlocked = true

@@ -1,6 +1,6 @@
 # Fretline
 
-Lector de tablaturas para iPad al estilo Songsterr: abre Guitar Pro (.gp, .gp3–.gp5, .gpx) y MusicXML, importa tabs de Songsterr y sincroniza la partitura con un vídeo de YouTube.
+Lector de tablaturas para iPad y Mac al estilo Songsterr: abre Guitar Pro (.gp, .gp3–.gp5, .gpx) y MusicXML, importa tabs de Songsterr y sincroniza la partitura con un vídeo de YouTube.
 
 SwiftUI + SwiftData por fuera, [alphaTab](https://alphatab.net) 1.9 (MPL-2.0) dentro de un `WKWebView` para renderizar y reproducir.
 
@@ -15,7 +15,18 @@ open Fretline.xcodeproj
 
 En Xcode: target **Fretline → Signing & Capabilities → Team**, elige tu iPad y Run. También vale exportar el .ipa e instalarlo con AltStore.
 
-Requisitos: iPadOS 17+.
+Requisitos: iPadOS 17+ / macOS 14+.
+
+### Mac
+
+```sh
+./build-mac.sh                       # genera dist/Fretline.app (firma ad-hoc)
+cp -R dist/Fretline.app /Applications/
+```
+
+También puedes abrirlo en Xcode con el esquema **FretlineMac** y darle a ▶. El target de Mac comparte todo el código con el iPad; lo propio de cada plataforma está en `Platform/Platform.swift` y en bloques `#if os(...)`. Va con sandbox, con permiso de red (YouTube y Songsterr) y de lectura de los archivos que elijas.
+
+En el Mac, la barra espaciadora hace play/pausa (o marca compás en modo Sync) aunque el foco esté en la partitura. ⌘O abre el importador de archivos.
 
 ## Qué hace
 
