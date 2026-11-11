@@ -57,7 +57,7 @@ private struct PlayerContent: View {
         }
         .overlay(alignment: .top) {
             if engine.audioBlocked {
-                Label("Toca la partitura para activar el sonido", systemImage: "speaker.wave.2.fill")
+                Label("Tap the score to enable sound", systemImage: "speaker.wave.2.fill")
                     .font(.callout.weight(.semibold))
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
@@ -188,14 +188,14 @@ private struct PlayerContent: View {
                 .font(.callout.monospacedDigit())
                 .foregroundStyle(.secondary)
 
-            Text("Compás \(engine.currentBar + 1)\(engine.barCount > 0 ? " / \(engine.barCount)" : "")")
+            Text("Bar \(engine.currentBar + 1)\(engine.barCount > 0 ? " / \(engine.barCount)" : "")")
                 .font(.callout.monospacedDigit())
                 .foregroundStyle(.secondary)
 
             Spacer()
 
             Menu {
-                Picker("Velocidad", selection: Binding(get: { speed }, set: setSpeed)) {
+                Picker("Speed", selection: Binding(get: { speed }, set: setSpeed)) {
                     ForEach(speeds, id: \.self) { Text("\(Int(($0 * 100).rounded())) %").tag($0) }
                 }
             } label: {
@@ -207,16 +207,16 @@ private struct PlayerContent: View {
                     .monospacedDigit()
             }
             .toggleStyle(.button)
-            .help("Elegir compases para repetir")
+            .help("Choose bars to loop")
 
             Toggle(isOn: $looping) { Image(systemName: "repeat") }
                 .toggleStyle(.button)
-                .help("Repetir la selección")
+                .help("Loop selection")
                 .onChange(of: looping) { _, on in engine.setLooping(on) }
 
             if engine.hasSelection {
                 Button { engine.clearSelection(); looping = false } label: { Image(systemName: "xmark.circle") }
-                    .help("Quitar selección")
+                    .help("Clear selection")
             }
 
             if mode == .synth {
@@ -225,7 +225,7 @@ private struct PlayerContent: View {
                     .onChange(of: metronome) { _, on in engine.setMetronome(on) }
                 Toggle(isOn: $countIn) { Image(systemName: "timer") }
                     .toggleStyle(.button)
-                    .help("Cuenta atrás antes de empezar")
+                    .help("Count-in before playing")
                     .onChange(of: countIn) { _, on in engine.setCountIn(on) }
             } else {
                 Toggle(isOn: $syncEditing) { Label("Sync", systemImage: "waveform.badge.plus") }
@@ -233,7 +233,7 @@ private struct PlayerContent: View {
             }
 
             if song.youtubeVideoId != nil {
-                Picker("Modo", selection: $mode) {
+                Picker("Mode", selection: $mode) {
                     ForEach(PlaybackMode.allCases) { Text($0.label).tag($0) }
                 }
                 .pickerStyle(.segmented)
@@ -245,8 +245,8 @@ private struct PlayerContent: View {
     }
 
     private var barLabel: String {
-        guard let r = engine.barSelection else { return "Compases" }
-        return r.count == 1 ? "Compás \(r.lowerBound + 1)" : "\(r.lowerBound + 1)–\(r.upperBound + 1)"
+        guard let r = engine.barSelection else { return "Bars" }
+        return r.count == 1 ? "Bar \(r.lowerBound + 1)" : "\(r.lowerBound + 1)–\(r.upperBound + 1)"
     }
 
     // MARK: - Toolbar superior
@@ -254,18 +254,18 @@ private struct PlayerContent: View {
     @ToolbarContentBuilder
     private var topToolbar: some ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
-            Button("Pistas", systemImage: "list.bullet") { showTracks = true }
+            Button("Tracks", systemImage: "list.bullet") { showTracks = true }
                 .disabled(engine.tracks.isEmpty)
-            Button("Vídeo", systemImage: song.youtubeVideoId == nil ? "play.rectangle" : "play.rectangle.fill") {
+            Button("Video", systemImage: song.youtubeVideoId == nil ? "play.rectangle" : "play.rectangle.fill") {
                 showVideoLink = true
             }
-            Button(horizontal ? "Página" : "Horizontal",
+            Button(horizontal ? "Page" : "Horizontal",
                    systemImage: horizontal ? "doc.plaintext" : "arrow.left.and.right.text.vertical") {
                 horizontal.toggle()
                 engine.setLayout(horizontal: horizontal)
             }
-            Button("Alejar", systemImage: "minus.magnifyingglass") { zoom(-0.1) }
-            Button("Acercar", systemImage: "plus.magnifyingglass") { zoom(0.1) }
+            Button("Zoom Out", systemImage: "minus.magnifyingglass") { zoom(-0.1) }
+            Button("Zoom In", systemImage: "plus.magnifyingglass") { zoom(0.1) }
         }
     }
 

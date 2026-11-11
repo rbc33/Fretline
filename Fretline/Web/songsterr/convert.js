@@ -150,7 +150,7 @@ export function buildScore(at, meta, parts) {
   for (const part of parts) {
     const isDrums = part.instrumentId === DRUM_INSTRUMENT_ID;
     const track = new m.Track();
-    track.name = part.name || part.instrument || 'Pista';
+    track.name = part.name || part.instrument || 'Track';
     track.playbackInfo.program = isDrums ? 0 : (part.instrumentId ?? 25);
     if (isDrums) {
       track.playbackInfo.primaryChannel = 9;

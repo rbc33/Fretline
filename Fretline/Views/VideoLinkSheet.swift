@@ -14,23 +14,23 @@ struct VideoLinkSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Enlace", text: $input, prompt: Text("https://www.youtube.com/watch?v=…"))
+                    TextField("Link", text: $input, prompt: Text("https://www.youtube.com/watch?v=…"))
                         .labelsHidden()
                         .urlInput()
                     if input.isEmpty, let clip = Clipboard.string, YouTubeVideoID.parse(clip) != nil {
-                        Button("Pegar enlace del portapapeles", systemImage: "doc.on.clipboard") { input = clip }
+                        Button("Paste link from clipboard", systemImage: "doc.on.clipboard") { input = clip }
                     }
                 } header: {
-                    Text("Vídeo de YouTube")
+                    Text("YouTube video")
                 } footer: {
                     Text(song.syncPoints.isEmpty
-                         ? "Después usa «Sync» para marcar los compases sobre el vídeo."
-                         : "Al cambiar de vídeo se borran los puntos de sincronización actuales.")
+                         ? "Then use “Sync” to mark the bars over the video."
+                         : "Changing the video deletes the current sync points.")
                 }
 
                 if song.youtubeVideoId != nil {
                     Section {
-                        Button("Quitar vídeo", role: .destructive) {
+                        Button("Remove Video", role: .destructive) {
                             song.youtubeVideoId = nil
                             song.syncPoints = []
                             onChange(nil)
@@ -41,12 +41,12 @@ struct VideoLinkSheet: View {
             }
             .platformFormStyle()
             .sheetSize(width: 520, height: 280)
-            .navigationTitle("Vídeo")
+            .navigationTitle("Video")
             .inlineNavigationTitle()
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Guardar") {
+                    Button("Save") {
                         guard let id = parsedId else { return }
                         if id != song.youtubeVideoId {
                             song.youtubeVideoId = id

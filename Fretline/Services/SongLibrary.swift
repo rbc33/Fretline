@@ -23,7 +23,7 @@ enum SongLibrary {
         case unsupported(String)
         var errorDescription: String? {
             switch self {
-            case .unsupported(let ext): return "Formato no soportado: .\(ext)"
+            case .unsupported(let ext): return "Unsupported format: .\(ext)"
             }
         }
     }

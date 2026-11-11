@@ -24,9 +24,9 @@ struct HistoryView: View {
         var id: String { rawValue }
         var label: String {
             switch self {
-            case .all: return "Todas"
+            case .all: return "All"
             case .songsterr: return "Songsterr"
-            case .file: return "Archivos"
+            case .file: return "Files"
             }
         }
     }
@@ -55,12 +55,12 @@ struct HistoryView: View {
         NavigationStack {
             Group {
                 if records.isEmpty {
-                    ContentUnavailableView("Sin importaciones",
+                    ContentUnavailableView("No imports yet",
                                            systemImage: "clock.arrow.circlepath",
-                                           description: Text("Aquí aparecerá cada canción que importes, de archivo o de Songsterr."))
+                                           description: Text("Every song you import, from a file or from Songsterr, will show up here."))
                 } else {
                     List {
-                        Picker("Origen", selection: $filter) {
+                        Picker("Source", selection: $filter) {
                             ForEach(SourceFilter.allCases) { Text($0.label).tag($0) }
                         }
                         .pickerStyle(.segmented)
@@ -79,22 +79,22 @@ struct HistoryView: View {
                             }
                         }
                     }
-                    .searchable(text: $search, prompt: "Buscar en el historial")
+                    .searchable(text: $search, prompt: "Search history")
                 }
             }
             .sheetSize(width: 560, height: 520)
-            .navigationTitle("Historial")
+            .navigationTitle("History")
             .inlineNavigationTitle()
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cerrar") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } }
                 ToolbarItem(placement: .destructiveAction) {
-                    Button("Borrar historial", systemImage: "trash", role: .destructive) { confirmClear = true }
+                    Button("Clear History", systemImage: "trash", role: .destructive) { confirmClear = true }
                         .disabled(records.isEmpty)
                 }
             }
-            .confirmationDialog("¿Borrar todo el historial? Las canciones de la biblioteca no se borran.",
+            .confirmationDialog("Clear the whole history? Songs in your library are kept.",
                                 isPresented: $confirmClear, titleVisibility: .visible) {
-                Button("Borrar historial", role: .destructive) { ImportHistory.clear(in: context) }
+                Button("Clear History", role: .destructive) { ImportHistory.clear(in: context) }
             }
         }
     }
@@ -123,7 +123,7 @@ struct HistoryView: View {
                             Text(song?.artist ?? record.artist).lineLimit(1)
                             Text("·")
                         }
-                        Text(record.isSongsterr ? "Songsterr" : (record.originalFileName ?? "Archivo")).lineLimit(1)
+                        Text(record.isSongsterr ? "Songsterr" : (record.originalFileName ?? "File")).lineLimit(1)
                     }
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -134,7 +134,7 @@ struct HistoryView: View {
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
                     if song == nil {
-                        Text(record.songsterrId != nil ? "Reimportar" : "Eliminada")
+                        Text(record.songsterrId != nil ? "Re-import" : "Deleted")
                             .font(.caption2.weight(.semibold))
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
@@ -148,16 +148,16 @@ struct HistoryView: View {
         .disabled(song == nil && record.songsterrId == nil)
         .contextMenu {
             if let song {
-                Button("Abrir", systemImage: "play.circle") { dismiss(); onOpen(song) }
+                Button("Open", systemImage: "play.circle") { dismiss(); onOpen(song) }
             }
             if let id = record.songsterrId {
-                Button("Volver a importar", systemImage: "arrow.down.circle") { dismiss(); onReimport(id) }
+                Button("Import Again", systemImage: "arrow.down.circle") { dismiss(); onReimport(id) }
             }
             if let url = record.songsterrURL {
-                Button("Ver en Songsterr", systemImage: "safari") { openURL(url) }
+                Button("View on Songsterr", systemImage: "safari") { openURL(url) }
             }
             Divider()
-            Button("Quitar del historial", systemImage: "trash", role: .destructive) {
+            Button("Remove from History", systemImage: "trash", role: .destructive) {
                 context.delete(record)
                 try? context.save()
             }
@@ -166,8 +166,8 @@ struct HistoryView: View {
 
     private func dayTitle(_ day: Date) -> String {
         let cal = Calendar.current
-        if cal.isDateInToday(day) { return "Hoy" }
-        if cal.isDateInYesterday(day) { return "Ayer" }
+        if cal.isDateInToday(day) { return "Today" }
+        if cal.isDateInYesterday(day) { return "Yesterday" }
         return day.formatted(.dateTime.weekday(.wide).day().month(.wide).year())
     }
 }

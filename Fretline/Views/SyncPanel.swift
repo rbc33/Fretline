@@ -14,7 +14,7 @@ struct SyncPanel: View {
     var body: some View {
         HStack(spacing: 14) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Sincronizar con el vídeo").font(.headline)
+                Text("Sync with video").font(.headline)
                 Text(hint).font(.caption).foregroundStyle(.secondary).lineLimit(2)
             }
             .frame(maxWidth: 280, alignment: .leading)
@@ -24,7 +24,7 @@ struct SyncPanel: View {
             Button {
                 markBar()
             } label: {
-                Label("Marcar compás", systemImage: "hand.tap.fill")
+                Label("Mark bar", systemImage: "hand.tap.fill")
                     .font(.headline)
                     .padding(.horizontal, 8)
             }
@@ -32,10 +32,10 @@ struct SyncPanel: View {
             .controlSize(.large)
             .keyboardShortcut(.space, modifiers: [])
 
-            Button("Compás 1 = ahora", systemImage: "flag.fill") {
+            Button("Bar 1 = now", systemImage: "flag.fill") {
                 engine.quickSync(atMs: youtube.estimatedTimeMs)
             }
-            .help("Modo rápido: solo marca el inicio; el resto se calcula con el tempo")
+            .help("Quick sync: mark where bar 1 starts and the rest follows the tempo")
 
             HStack(spacing: 4) {
                 Button { engine.nudgeSync(-50) } label: { Text("−50 ms").monospacedDigit() }
@@ -50,11 +50,11 @@ struct SyncPanel: View {
 
             Button(role: .destructive) { confirmClear = true } label: { Image(systemName: "trash") }
                 .disabled(engine.syncPoints.isEmpty)
-                .confirmationDialog("¿Borrar todos los puntos de sincronización?", isPresented: $confirmClear) {
-                    Button("Borrar", role: .destructive) { engine.clearSync() }
+                .confirmationDialog("Delete all sync points?", isPresented: $confirmClear) {
+                    Button("Delete", role: .destructive) { engine.clearSync() }
                 }
 
-            Button("Listo", action: onDone).bold()
+            Button("Done", action: onDone).bold()
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 10)
@@ -62,12 +62,12 @@ struct SyncPanel: View {
 
     private var hint: String {
         if !youtube.isPlaying && engine.syncPoints.isEmpty {
-            return "Dale a play y toca «Marcar compás» (o espacio/pedal) en el primer tiempo de cada compás."
+            return "Press play, then tap “Mark bar” (or Space / pedal) on beat 1 of every bar."
         }
         if let p = engine.syncProgress {
-            return p.count >= p.total ? "Todos los compases marcados (\(p.total))." : "Marcados \(p.count) de \(p.total) compases."
+            return p.count >= p.total ? "All \(p.total) bars marked." : "\(p.count) of \(p.total) bars marked."
         }
-        return "\(engine.syncPoints.count) puntos de sincronización."
+        return "\(engine.syncPoints.count) sync points."
     }
 
     private func markBar() {

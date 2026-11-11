@@ -181,7 +181,7 @@ final class TabEngine: NSObject, WKScriptMessageHandler {
             barCount = Int(num("barCount") ?? 0)
             tracks = (body["tracks"] as? [[String: Any]] ?? []).compactMap { t in
                 guard let i = (t["index"] as? NSNumber)?.intValue else { return nil }
-                return TrackInfo(index: i, name: t["name"] as? String ?? "Pista \(i + 1)",
+                return TrackInfo(index: i, name: t["name"] as? String ?? "Track \(i + 1)",
                                  isPercussion: t["isPercussion"] as? Bool ?? false)
             }
             onScoreLoaded?(title, artist)
@@ -251,7 +251,7 @@ final class TabEngine: NSObject, WKScriptMessageHandler {
                                                                    videoId: body["videoId"] as? String,
                                                                    syncPoints: points))
             } else {
-                continuation.resume(throwing: SongsterrError.conversion("Respuesta vacía"))
+                continuation.resume(throwing: SongsterrError.conversion("Empty response"))
             }
 
         case "error":

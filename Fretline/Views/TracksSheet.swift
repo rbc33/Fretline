@@ -42,13 +42,13 @@ struct TracksSheet: View {
                 }
             }
             .sheetSize(width: 440, height: 380)
-            .navigationTitle("Pistas")
+            .navigationTitle("Tracks")
             .inlineNavigationTitle()
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Hecho") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
             .safeAreaInset(edge: .bottom) {
-                Text("Toca el círculo para mostrar u ocultar pistas en la partitura. M = silenciar, S = solo.")
+                Text("Tap the circle to show or hide a track in the score. M = mute, S = solo.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .padding()

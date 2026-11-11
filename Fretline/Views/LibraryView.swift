@@ -24,21 +24,21 @@ struct LibraryView: View {
             Group {
                 if songs.isEmpty {
                     ContentUnavailableView {
-                        Label("Sin canciones", systemImage: "guitars")
+                        Label("No songs yet", systemImage: "guitars")
                     } description: {
-                        Text("Importa un archivo Guitar Pro (.gp, .gp5, .gpx…) o una tab de Songsterr.")
+                        Text("Import a Guitar Pro file (.gp, .gp5, .gpx…) or a Songsterr tab.")
                     } actions: {
-                        Button("Importar archivo") { showFileImporter = true }.buttonStyle(.borderedProminent)
-                        Button("Desde Songsterr") { songsterrPrefill = ""; showSongsterr = true }
+                        Button("Import File") { showFileImporter = true }.buttonStyle(.borderedProminent)
+                        Button("From Songsterr") { songsterrPrefill = ""; showSongsterr = true }
                     }
                 } else {
                     List {
                         ForEach(filtered) { song in
                             NavigationLink(value: song) { SongRow(song: song) }
                                 .contextMenu {
-                                    Button(song.favorite ? "Quitar de favoritas" : "Favorita",
+                                    Button(song.favorite ? "Remove from Favorites" : "Favorite",
                                            systemImage: song.favorite ? "star.slash" : "star") { song.favorite.toggle() }
-                                    Button("Eliminar", systemImage: "trash", role: .destructive) {
+                                    Button("Delete", systemImage: "trash", role: .destructive) {
                                         SongLibrary.delete(song, from: context)
                                     }
                                 }
@@ -47,17 +47,17 @@ struct LibraryView: View {
                             offsets.map { filtered[$0] }.forEach { SongLibrary.delete($0, from: context) }
                         }
                     }
-                    .searchable(text: $search, prompt: "Buscar canción o artista")
+                    .searchable(text: $search, prompt: "Search songs or artists")
                 }
             }
             .navigationTitle("Fretline")
             .navigationDestination(for: Song.self) { PlayerView(song: $0) }
             .toolbar {
                 ToolbarItemGroup(placement: .primaryAction) {
-                    Button("Historial", systemImage: "clock.arrow.circlepath") { showHistory = true }
+                    Button("History", systemImage: "clock.arrow.circlepath") { showHistory = true }
                         .keyboardShortcut("y")
                     Button("Songsterr", systemImage: "arrow.down.circle") { songsterrPrefill = ""; showSongsterr = true }
-                    Button("Importar", systemImage: "square.and.arrow.down") { showFileImporter = true }
+                    Button("Import", systemImage: "square.and.arrow.down") { showFileImporter = true }
                         .keyboardShortcut("o")
                 }
             }
@@ -85,7 +85,7 @@ struct LibraryView: View {
                 guard url.isFileURL else { return }
                 importFiles([url], open: true)
             }
-            .alert("No se pudo importar", isPresented: .constant(errorMessage != nil)) {
+            .alert("Import failed", isPresented: .constant(errorMessage != nil)) {
                 Button("OK") { errorMessage = nil }
             } message: {
                 Text(errorMessage ?? "")
@@ -123,7 +123,7 @@ private struct SongRow: View {
             if song.youtubeVideoId != nil {
                 Image(systemName: song.syncPoints.isEmpty ? "play.rectangle" : "play.rectangle.fill")
                     .foregroundStyle(song.syncPoints.isEmpty ? Color.secondary : Color.red)
-                    .help(song.syncPoints.isEmpty ? "Vídeo sin sincronizar" : "Vídeo sincronizado")
+                    .help(song.syncPoints.isEmpty ? "Video not synced" : "Video synced")
             }
         }
         .padding(.vertical, 4)

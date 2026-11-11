@@ -164,12 +164,12 @@ final class YouTubePlayer: NSObject, WKScriptMessageHandler {
 
     private static func describe(error code: Int) -> String {
         switch code {
-        case 2: return "ID de vídeo no válido."
-        case 5: return "El vídeo no se puede reproducir en este reproductor."
-        case 100: return "El vídeo no existe o es privado."
-        case 101, 150: return "El propietario no permite reproducir este vídeo fuera de YouTube. Prueba con otro."
-        case 152, 153: return "YouTube rechazó el reproductor embebido (origen). Revisa el bundle id."
-        default: return "Error de YouTube (\(code))."
+        case 2: return "Invalid video ID."
+        case 5: return "This video can’t be played in this player."
+        case 100: return "The video doesn’t exist or is private."
+        case 101, 150: return "The owner doesn’t allow this video to play outside YouTube. Try another one."
+        case 152, 153: return "YouTube rejected the embedded player (origin). Check the bundle ID."
+        default: return "YouTube error (\(code))."
         }
     }
 

@@ -19,13 +19,13 @@ struct BarLoopPanel: View {
             Spacer()
 
             if let range = engine.barSelection {
-                stepper(label: "Inicio", value: range.lowerBound + 1,
+                stepper(label: "Start", value: range.lowerBound + 1,
                         minus: { engine.adjustBarSelection(start: -1) },
                         plus: { engine.adjustBarSelection(start: 1) },
                         canMinus: range.lowerBound > 0,
                         canPlus: range.lowerBound < range.upperBound)
 
-                stepper(label: "Fin", value: range.upperBound + 1,
+                stepper(label: "End", value: range.upperBound + 1,
                         minus: { engine.adjustBarSelection(end: -1) },
                         plus: { engine.adjustBarSelection(end: 1) },
                         canMinus: range.upperBound > range.lowerBound,
@@ -33,44 +33,44 @@ struct BarLoopPanel: View {
 
                 HStack(spacing: 4) {
                     Button { engine.shiftBarSelection(-1) } label: { Image(systemName: "chevron.left.2") }
-                        .help("Bucle anterior")
+                        .help("Previous loop")
                         .disabled(range.lowerBound == 0)
                     Button { engine.shiftBarSelection(1) } label: { Image(systemName: "chevron.right.2") }
-                        .help("Siguiente bucle")
+                        .help("Next loop")
                         .disabled(engine.barCount > 0 && range.upperBound >= engine.barCount - 1)
                 }
                 .buttonStyle(.bordered)
 
-                Toggle(isOn: $looping) { Label("Repetir", systemImage: "repeat") }
+                Toggle(isOn: $looping) { Label("Repeat", systemImage: "repeat") }
                     .toggleStyle(.button)
 
                 Button(role: .destructive) {
                     engine.clearSelection()
                     looping = false
                 } label: { Image(systemName: "xmark.circle") }
-                    .help("Quitar selección")
+                    .help("Clear selection")
             }
 
-            Button("Listo", action: onDone).bold()
+            Button("Done", action: onDone).bold()
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 10)
     }
 
     private var title: String {
-        guard let r = engine.barSelection else { return "Repetir compases" }
-        if engine.waitingForBarEnd { return "Desde el compás \(r.lowerBound + 1)…" }
-        return r.count == 1 ? "Compás \(r.lowerBound + 1)" : "Compases \(r.lowerBound + 1)–\(r.upperBound + 1)"
+        guard let r = engine.barSelection else { return "Loop bars" }
+        if engine.waitingForBarEnd { return "From bar \(r.lowerBound + 1)…" }
+        return r.count == 1 ? "Bar \(r.lowerBound + 1)" : "Bars \(r.lowerBound + 1)–\(r.upperBound + 1)"
     }
 
     private var hint: String {
         if engine.barSelection == nil {
-            return "Toca el primer compás y luego el último, o arrastra de uno a otro."
+            return "Tap the first bar, then the last one, or drag across them."
         }
         if engine.waitingForBarEnd {
-            return "Toca el último compás del bucle (o dale a play para repetir solo este)."
+            return "Tap the last bar of the loop (or press play to loop just this one)."
         }
-        return "Toca otro compás para empezar una selección nueva."
+        return "Tap another bar to start a new selection."
     }
 
     private func stepper(label: String, value: Int,

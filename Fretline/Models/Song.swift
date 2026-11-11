@@ -4,7 +4,7 @@ import SwiftData
 enum PlaybackMode: String, CaseIterable, Identifiable {
     case synth, youtube
     var id: String { rawValue }
-    var label: String { self == .synth ? "Sintetizador" : "YouTube" }
+    var label: String { self == .synth ? "Synth" : "YouTube" }
 }
 
 /// Igual que `FlatSyncPoint` de alphaTab.

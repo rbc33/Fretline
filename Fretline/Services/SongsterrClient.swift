@@ -15,10 +15,10 @@ enum SongsterrError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .invalidURL: return "No reconozco esa URL. Pega un enlace de songsterr.com (…-s12345) o el número de la canción."
-        case .http(let code, let what): return "Songsterr respondió \(code) al pedir \(what)."
-        case .badResponse(let what): return "Respuesta inesperada de Songsterr (\(what)). Puede que hayan cambiado su formato."
-        case .conversion(let msg): return "No se pudo convertir la tab: \(msg)"
+        case .invalidURL: return "That URL isn’t recognized. Paste a songsterr.com link (…-s12345) or the song number."
+        case .http(let code, let what): return "Songsterr returned \(code) when requesting \(what)."
+        case .badResponse(let what): return "Unexpected response from Songsterr (\(what)). Their format may have changed."
+        case .conversion(let msg): return "Couldn’t convert the tab: \(msg)"
         }
     }
 }
@@ -61,7 +61,7 @@ struct SongsterrClient {
     }
 
     func fetchMeta(songId: Int) async throws -> Meta {
-        let json = try await getJSON("https://www.songsterr.com/api/meta/\(songId)", what: "metadatos")
+        let json = try await getJSON("https://www.songsterr.com/api/meta/\(songId)", what: "metadata")
         guard let dict = json as? [String: Any],
               let revisionId = (dict["revisionId"] as? NSNumber)?.intValue else {
             throw SongsterrError.badResponse("meta")
@@ -78,11 +78,11 @@ struct SongsterrClient {
     }
 
     func fetchPart(meta: Meta, partId: Int) async throws -> [String: Any] {
-        var lastError: Error = SongsterrError.badResponse("pista \(partId)")
+        var lastError: Error = SongsterrError.badResponse("track \(partId)")
         for host in Self.cdnHosts {
             do {
                 let json = try await getJSON("https://\(host)/\(meta.songId)/\(meta.revisionId)/\(meta.image)/\(partId).json",
-                                             what: "la pista \(partId)")
+                                             what: "track \(partId)")
                 if var dict = json as? [String: Any] {
                     // El nombre e instrumento suelen venir en meta.tracks
                     if let tracks = meta.raw["tracks"] as? [[String: Any]], partId < tracks.count {
@@ -104,7 +104,7 @@ struct SongsterrClient {
     /// que llega como NSNull (no como nil), por eso se lee con `as? String`.
     func fetchVideos(meta: Meta) async -> [[String: Any]] {
         guard let json = try? await getJSON("https://www.songsterr.com/api/video-points/\(meta.songId)/\(meta.revisionId)/list",
-                                            what: "vídeos"),
+                                            what: "videos"),
               let list = json as? [[String: Any]] else { return [] }
         return list.compactMap { item in
             guard let id = item["videoId"] as? String,
@@ -141,19 +141,19 @@ final class SongsterrImporter {
         isWorking = true
         defer { isWorking = false; status = nil }
 
-        status = "Buscando la canción…"
+        status = "Looking up the song…"
         let meta = try await client.fetchMeta(songId: songId)
 
         var parts: [Any] = []
         for (n, partId) in meta.partIds.enumerated() {
-            status = "Descargando pista \(n + 1) de \(meta.partIds.count)…"
+            status = "Downloading track \(n + 1) of \(meta.partIds.count)…"
             parts.append(try await client.fetchPart(meta: meta, partId: partId))
         }
 
-        status = "Buscando vídeo sincronizado…"
+        status = "Looking for a synced video…"
         let videos = await client.fetchVideos(meta: meta)
 
-        status = "Convirtiendo a Guitar Pro…"
+        status = "Converting to Guitar Pro…"
         // El vídeo se elige en JS, donde se conoce el orden real de compases de la partitura
         let result = try await engine.convertSongsterr(meta: ["title": meta.title, "artist": meta.artist],
                                                        parts: parts,

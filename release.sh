@@ -6,12 +6,14 @@
 #   4. actualiza la cask del tap de Homebrew (versión + sha256) y la sube
 #
 # Uso: ./release.sh 0.2.0
+#      ./release.sh 0.1.0 --replace   (rehace una versión ya publicada: borra su release y su etiqueta)
 # Requisitos: Xcode, XcodeGen y GitHub CLI con sesión iniciada (gh auth login).
 set -e
 cd "$(dirname "$0")"
 
 VERSION="$1"
-[ -n "$VERSION" ] || { echo "Uso: ./release.sh <versión>   (p. ej. ./release.sh 0.2.0)"; exit 1; }
+REPLACE="$2"
+[ -n "$VERSION" ] || { echo "Uso: ./release.sh <versión> [--replace]   (p. ej. ./release.sh 0.2.0)"; exit 1; }
 command -v gh >/dev/null || { echo "Instala GitHub CLI: brew install gh"; exit 1; }
 
 REPO="${FRETLINE_REPO:-rbc33/Fretline}"
@@ -31,6 +33,16 @@ DMG="dist/Fretline-$VERSION.dmg"
 SHA=$(shasum -a 256 "$DMG" | awk '{print $1}')
 
 # 3. Release en GitHub
+if gh release view "v$VERSION" --repo "$REPO" >/dev/null 2>&1; then
+  if [ "$REPLACE" = "--replace" ]; then
+    echo "↻ Sustituyendo la release v$VERSION existente…"
+    gh release delete "v$VERSION" --repo "$REPO" --yes --cleanup-tag
+    git tag -d "v$VERSION" >/dev/null 2>&1 || true
+  else
+    echo "❌ La release v$VERSION ya existe. Usa ./release.sh $VERSION --replace para rehacerla."
+    exit 1
+  fi
+fi
 gh release create "v$VERSION" "$DMG" \
   --repo "$REPO" \
   --title "Fretline $VERSION" \
@@ -56,5 +68,6 @@ echo "✅ Fretline $VERSION publicada"
 echo "   Release: https://github.com/$REPO/releases/tag/v$VERSION"
 echo "   Instalar: brew install --cask rbc33/fretline/fretline"
 echo "   Actualizar: brew upgrade --cask fretline"
+[ "$REPLACE" = "--replace" ] && echo "   (misma versión: brew update && brew reinstall --cask fretline)"
 echo ""
 echo "Recuerda hacer commit del cambio de versión en project.yml."

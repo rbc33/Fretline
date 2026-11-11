@@ -27,21 +27,21 @@ struct SongsterrImportView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Enlace", text: $input, prompt: Text("https://www.songsterr.com/a/wsa/…-s12345"))
+                    TextField("Link", text: $input, prompt: Text("https://www.songsterr.com/a/wsa/…-s12345"))
                         .labelsHidden()
                         .urlInput()
                         .onSubmit(start)
                     if let clip = Clipboard.string, SongsterrClient.songId(from: clip) != nil, input.isEmpty {
-                        Button("Pegar enlace del portapapeles", systemImage: "doc.on.clipboard") { input = clip }
+                        Button("Paste link from clipboard", systemImage: "doc.on.clipboard") { input = clip }
                     }
                 } header: {
-                    Text("Enlace de Songsterr")
+                    Text("Songsterr link")
                 } footer: {
-                    Text("Se descargan todas las pistas, se convierten a Guitar Pro y, si Songsterr tiene un vídeo sincronizado, se importa también. Solo para uso personal.")
+                    Text("All tracks are downloaded and converted to Guitar Pro. If Songsterr has a synced video, it comes along too. For personal use only.")
                 }
 
                 if input.isEmpty, !recents.isEmpty, !importer.isWorking {
-                    Section("Importadas recientemente") {
+                    Section("Recently imported") {
                         ForEach(recents) { record in
                             Button {
                                 if let id = record.songsterrId { input = String(id) }
@@ -67,12 +67,12 @@ struct SongsterrImportView: View {
             }
             .platformFormStyle()
             .sheetSize(width: 520, height: recents.isEmpty ? 280 : 460)
-            .navigationTitle("Importar de Songsterr")
+            .navigationTitle("Import from Songsterr")
             .inlineNavigationTitle()
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Importar", action: start)
+                    Button("Import", action: start)
                         .disabled(importer.isWorking || SongsterrClient.songId(from: input) == nil)
                 }
             }

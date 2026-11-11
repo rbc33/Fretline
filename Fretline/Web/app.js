@@ -122,8 +122,8 @@ function createApi() {
     post('playerReady', { mode: state.mode });
   });
 
-  api.soundFontLoadFailed?.on((e) => post('error', { message: 'No se pudo cargar el SoundFont: ' + String(e?.message || e) }));
-  api.midiLoadFailed?.on((e) => post('error', { message: 'No se pudo preparar el audio de la partitura: ' + String(e?.message || e) }));
+  api.soundFontLoadFailed?.on((e) => post('error', { message: 'Couldn’t load the SoundFont: ' + String(e?.message || e) }));
+  api.midiLoadFailed?.on((e) => post('error', { message: 'Couldn’t prepare the score audio: ' + String(e?.message || e) }));
 
   api.playerStateChanged.on((e) => {
     const playing = e.state === alphaTab.synth.PlayerState.Playing;
@@ -134,7 +134,7 @@ function createApi() {
     } else if (state.wantPlaying && state.mode === 'synth' && !state.switching) {
       // Pausa que no ha pedido nadie (audio interrumpido por iOS): reanudamos
       setTimeout(() => {
-        if (state.wantPlaying && state.api?.playerState !== alphaTab.synth.PlayerState.Playing) recoverPlayback('pausa inesperada');
+        if (state.wantPlaying && state.api?.playerState !== alphaTab.synth.PlayerState.Playing) recoverPlayback('unexpected pause');
       }, 300);
     }
   });
@@ -273,7 +273,7 @@ let recovering = false;
 async function recoverPlayback(reason) {
   if (recovering || !state.wantPlaying || state.mode !== 'synth') return;
   recovering = true;
-  console.log('[fretline] reanudando audio:', reason);
+  console.log('[fretline] resuming audio:', reason);
   try {
     const ok = await ensureAudioRunning();
     const api = state.api;
@@ -298,7 +298,7 @@ setInterval(() => {
   hookAudioContext();
   const t = api.timePosition;
   if (api.playerState === alphaTab.synth.PlayerState.Playing && t === lastWatchTime) {
-    if (++stuckTicks >= 2) { stuckTicks = 0; recoverPlayback('posición parada'); }
+    if (++stuckTicks >= 2) { stuckTicks = 0; recoverPlayback('position stuck'); }
   } else {
     stuckTicks = 0;
   }
@@ -339,7 +339,7 @@ async function playChecked() {
 // que controla el reproductor de YouTube. Swift nos devuelve el tiempo del vídeo.
 function attachExternalHandler() {
   const output = state.api.player?.output;
-  if (!output) return post('error', { message: 'Salida de medio externo no disponible' });
+  if (!output) return post('error', { message: 'External media output not available' });
   output.handler = {
     get backingTrackDuration() { return state.videoDuration || 0; },
     get playbackRate() { return state.speed; },
