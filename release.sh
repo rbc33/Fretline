@@ -15,7 +15,9 @@ VERSION="$1"
 command -v gh >/dev/null || { echo "Instala GitHub CLI: brew install gh"; exit 1; }
 
 REPO="${FRETLINE_REPO:-rbc33/Fretline}"
-TAP="${FRETLINE_TAP:-rbc33/homebrew-tap}"
+TAP="${FRETLINE_TAP:-rbc33/homebrew-fretline}"
+# Copia local del tap (si existe se actualiza ahí; si no, se clona en una carpeta temporal)
+TAP_DIR="${FRETLINE_TAP_DIR:-../homebrew-fretline}"
 
 # 1. Versión (MARKETING_VERSION) y número de build (nº de commits)
 BUILD=$(git rev-list --count HEAD 2>/dev/null || echo 1)
@@ -35,19 +37,24 @@ gh release create "v$VERSION" "$DMG" \
   --generate-notes
 
 # 4. Cask del tap
-TMP=$(mktemp -d)
-trap 'rm -rf "$TMP"' EXIT
-gh repo clone "$TAP" "$TMP/tap" -- --depth 1 --quiet
-CASK="$TMP/tap/Casks/fretline.rb"
+if [ -d "$TAP_DIR/.git" ]; then
+  git -C "$TAP_DIR" pull -q --rebase
+else
+  TMP=$(mktemp -d)
+  trap 'rm -rf "$TMP"' EXIT
+  gh repo clone "$TAP" "$TMP/tap" -- --depth 1 --quiet
+  TAP_DIR="$TMP/tap"
+fi
+CASK="$TAP_DIR/Casks/fretline.rb"
 sed -i '' -E "s/^  version \"[^\"]*\"/  version \"$VERSION\"/" "$CASK"
 sed -i '' -E "s/^  sha256 .*/  sha256 \"$SHA\"/" "$CASK"
-git -C "$TMP/tap" commit -qam "fretline $VERSION"
-git -C "$TMP/tap" push -q
+git -C "$TAP_DIR" commit -qam "fretline $VERSION"
+git -C "$TAP_DIR" push -q
 
 echo ""
 echo "✅ Fretline $VERSION publicada"
 echo "   Release: https://github.com/$REPO/releases/tag/v$VERSION"
-echo "   Instalar: brew install --cask rbc33/tap/fretline"
+echo "   Instalar: brew install --cask rbc33/fretline/fretline"
 echo "   Actualizar: brew upgrade --cask fretline"
 echo ""
 echo "Recuerda hacer commit del cambio de versión en project.yml."

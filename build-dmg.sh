@@ -24,7 +24,8 @@ hdiutil create \
   -format UDZO \
   -imagekey zlib-level=9 \
   -ov \
-  "$DMG" >/dev/null
+  "$DMG" 2>&1 | grep -v -e "deprecated" -e "diskutil image" >&2 || true
+[ -f "$DMG" ] || { echo "❌ No se pudo crear $DMG"; exit 1; }
 
 SHA=$(shasum -a 256 "$DMG" | awk '{print $1}')
 echo "✅ $PWD/$DMG"

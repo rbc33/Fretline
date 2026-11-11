@@ -33,10 +33,10 @@ También puedes abrirlo en Xcode con el esquema **FretlineMac** y darle a ▶. E
 ./release.sh 0.2.0      # versión + DMG + release en GitHub + actualiza la cask del tap
 ```
 
-Instalar con Homebrew (tap [rbc33/homebrew-tap](https://github.com/rbc33/homebrew-tap)):
+Instalar con Homebrew (tap [rbc33/homebrew-fretline](https://github.com/rbc33/homebrew-fretline)):
 
 ```sh
-brew install --cask rbc33/tap/fretline
+brew install --cask rbc33/fretline/fretline
 brew upgrade --cask fretline
 ```
 
