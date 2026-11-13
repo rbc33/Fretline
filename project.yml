@@ -9,8 +9,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "0.2.2"
-    CURRENT_PROJECT_VERSION: "27"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
 
 targets:
   # ---------- iPad ----------
@@ -52,6 +52,7 @@ targets:
         UIBackgroundModes:
           - audio
         UIFileSharingEnabled: true
+        NSMicrophoneUsageDescription: Fretline uses the microphone for the built-in chromatic tuner.
         LSSupportsOpeningDocumentsInPlace: false
         UTImportedTypeDeclarations:
           - UTTypeIdentifier: com.rbc33.fretline.guitarpro
@@ -105,6 +106,7 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSApplicationCategoryType: public.app-category.music
+        NSMicrophoneUsageDescription: Fretline uses the microphone for the built-in chromatic tuner.
         NSHumanReadableCopyright: "© rbc33"
         UTImportedTypeDeclarations:
           - UTTypeIdentifier: com.rbc33.fretline.guitarpro
@@ -134,3 +136,5 @@ targets:
         com.apple.security.network.client: true
         # Abrir .gp desde el selector de archivos o el Finder
         com.apple.security.files.user-selected.read-only: true
+        # Micrófono para el afinador
+        com.apple.security.device.audio-input: true

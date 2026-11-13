@@ -9,6 +9,7 @@ struct LibraryView: View {
     @State private var showFileImporter = false
     @State private var showSongsterr = false
     @State private var showHistory = false
+    @State private var showTuner = false
     /// Enlace con el que abrir la hoja de Songsterr (al reimportar desde el historial)
     @State private var songsterrPrefill = ""
     @State private var path: [Song] = []
@@ -64,6 +65,9 @@ struct LibraryView: View {
             .navigationDestination(for: Song.self) { PlayerView(song: $0) }
             .toolbar {
                 ToolbarItemGroup(placement: .primaryAction) {
+                    Button("Tuner", systemImage: "tuningfork") { showTuner = true }
+                        .keyboardShortcut("t")
+                        .help("Chromatic tuner (⌘T)")
                     Button("History", systemImage: "clock.arrow.circlepath") { showHistory = true }
                         .keyboardShortcut("y")
                         .help("Import history (⌘Y)")
@@ -85,6 +89,7 @@ struct LibraryView: View {
             .sheet(isPresented: $showSongsterr) {
                 SongsterrImportView(initialInput: songsterrPrefill) { song in path = [song] }
             }
+            .sheet(isPresented: $showTuner) { TunerView() }
             .sheet(isPresented: $showHistory) {
                 HistoryView(onOpen: { song in path = [song] },
                             onReimport: { id in

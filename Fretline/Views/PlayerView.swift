@@ -38,6 +38,7 @@ private struct PlayerContent: View {
     @State private var showVideoLink = false
     @State private var syncEditing = false
     @State private var barSelecting = false
+    @State private var showTuner = false
     @State private var videoCorner: Alignment = .bottomTrailing
     @State private var videoMinimized = false
     @State private var didSetup = false
@@ -86,6 +87,7 @@ private struct PlayerContent: View {
         .navigationTitle(song.title)
         .inlineNavigationTitle()
         .toolbar { topToolbar }
+        .sheet(isPresented: $showTuner) { TunerView() }
         .sheet(isPresented: $showTracks) {
             TracksSheet(engine: engine).presentationDetents([.medium, .large])
         }
@@ -262,6 +264,14 @@ private struct PlayerContent: View {
     @ToolbarContentBuilder
     private var topToolbar: some ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
+            Button("Tuner", systemImage: "tuningfork") {
+                // El micrófono oiría la propia reproducción: pausamos antes de afinar
+                engine.pause()
+                youtube.pause()
+                showTuner = true
+            }
+            .keyboardShortcut("t")
+            .help("Chromatic tuner (⌘T). Pauses playback")
             Button("Tracks", systemImage: "list.bullet") { showTracks = true }
                 .disabled(engine.tracks.isEmpty)
                 .help("Show, hide, mute or solo tracks")

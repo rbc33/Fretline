@@ -51,6 +51,12 @@ Tab sites are great at showing you the notes and bad at letting you **play along
 - **Speed control** from 25% to 150% (synth) or 25% to 200% (video).
 - **Metronome** and **count-in**.
 
+### 🎚️ Chromatic tuner
+- Built-in **chromatic tuner** that listens through the mic: note, octave, a cents needle with a green ±5 cent zone, and the exact frequency next to the target.
+- Accurate to about **±1 cent** across the guitar range, and it goes down to a 5-string bass low B.
+- Adjustable **A4 reference** (415–466 Hz) and a standard-tuning string guide (E A D G B E).
+- Open it from the library or the player with **⌘T**. Playback pauses so the tuner only hears your instrument.
+
 ### 🎛️ Mixer and layout
 - Show or hide tracks, plus **mute** and **solo** per track.
 - **Page** or **horizontal** layout, with zoom in and out.
@@ -62,7 +68,7 @@ Tab sites are great at showing you the notes and bad at letting you **play along
 - Recent Songsterr imports appear right in the import sheet.
 
 ### 🖥️ Mac-native
-- **Keyboard first**: **Space** plays or pauses (even with the score focused), **Home** goes back to the start, **⌘O** imports, **⌘Y** opens history, **⌘+ / ⌘−** zoom and **⌘Z** undoes the last sync mark.
+- **Keyboard first**: **Space** plays or pauses (even with the score focused), **Home** goes back to the start, **⌘O** imports, **⌘Y** opens history, **⌘T** opens the tuner, **⌘+ / ⌘−** zoom and **⌘Z** undoes the last sync mark.
 - **Tooltips everywhere**: hover any button to see what it does (also with a trackpad on iPad).
 - Sandboxed, ad-hoc signed and installable with Homebrew.
 
@@ -193,7 +199,6 @@ Fretline/
 
 ## Roadmap
 
-- [ ] Built-in tuner (microphone)
 - [ ] iCloud sync of library, loops and sync points
 - [ ] Per-loop speed trainer (auto-increase tempo each pass)
 - [ ] Apple Pencil annotations on the score
