@@ -1,8 +1,8 @@
 #!/bin/sh
 # Publica una versión de Fretline para Mac:
 #   1. fija la versión en project.yml
-#   2. genera el .dmg (build-dmg.sh)
-#   3. crea la release vX.Y.Z en GitHub con el .dmg
+#   2. genera el .dmg (build-dmg.sh) y el .ipa sin firmar para iPad (build-ipa.sh)
+#   3. crea la release vX.Y.Z en GitHub con el .dmg y el .ipa
 #   4. actualiza la cask del tap de Homebrew (versión + sha256) y la sube
 #
 # Uso: ./release.sh 0.2.0
@@ -32,6 +32,11 @@ DMG="dist/Fretline-$VERSION.dmg"
 [ -f "$DMG" ] || { echo "❌ No se encontró $DMG"; exit 1; }
 SHA=$(shasum -a 256 "$DMG" | awk '{print $1}')
 
+# .ipa sin firmar para SideStore / AltStore
+./build-ipa.sh
+IPA="dist/Fretline-$VERSION.ipa"
+mv Fretline.ipa "$IPA"
+
 # 3. Release en GitHub
 if gh release view "v$VERSION" --repo "$REPO" >/dev/null 2>&1; then
   if [ "$REPLACE" = "--replace" ]; then
@@ -43,7 +48,7 @@ if gh release view "v$VERSION" --repo "$REPO" >/dev/null 2>&1; then
     exit 1
   fi
 fi
-gh release create "v$VERSION" "$DMG" \
+gh release create "v$VERSION" "$DMG" "$IPA" \
   --repo "$REPO" \
   --title "Fretline $VERSION" \
   --generate-notes

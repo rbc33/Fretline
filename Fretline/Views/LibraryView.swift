@@ -20,6 +20,11 @@ struct LibraryView: View {
     @State private var songsterrSearching = false
     @State private var songsterrError: String?
     @State private var importingId: Int?
+    // Scroll infinito: al llegar al final se pide la siguiente página
+    @State private var songsterrHasMore = false
+    @State private var songsterrLoadingMore = false
+    @State private var songsterrLoadMoreFailed = false
+    private static let songsterrPageSize = 20
 
     private var filtered: [Song] {
         guard !search.isEmpty else { return songs }
@@ -138,6 +143,16 @@ struct LibraryView: View {
             }
             ForEach(songsterrResults) { result in
                 songsterrRow(result)
+                    .onAppear {
+                        // Al aparecer uno de los últimos resultados, cargamos más
+                        if let index = songsterrResults.firstIndex(of: result),
+                           index >= songsterrResults.count - 5 {
+                            loadMoreSongsterr()
+                        }
+                    }
+            }
+            if !songsterrResults.isEmpty {
+                songsterrFooter
             }
         } header: {
             HStack {
@@ -184,6 +199,31 @@ struct LibraryView: View {
         .disabled(importingId != nil && !isImporting)
     }
 
+    @ViewBuilder
+    private var songsterrFooter: some View {
+        if songsterrLoadingMore {
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text("Loading more…")
+            }
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity)
+        } else if songsterrLoadMoreFailed {
+            Button("Couldn’t load more results. Try again", systemImage: "arrow.clockwise") {
+                loadMoreSongsterr()
+            }
+            .frame(maxWidth: .infinity)
+        } else if songsterrHasMore {
+            // Por si la lista es corta y el último resultado ya era visible
+            Color.clear.frame(height: 1).onAppear { loadMoreSongsterr() }
+        } else {
+            Text("End of Songsterr results")
+                .font(.footnote)
+                .foregroundStyle(.tertiary)
+                .frame(maxWidth: .infinity)
+        }
+    }
+
     private func subtitle(_ r: SongsterrClient.SearchResult) -> String {
         let tracks = r.trackCount == 1 ? "1 track" : "\(r.trackCount) tracks"
         return r.artist.isEmpty ? tracks : "\(r.artist) · \(tracks)"
@@ -191,6 +231,9 @@ struct LibraryView: View {
 
     private func searchSongsterr(_ pattern: String) async {
         songsterrError = nil
+        songsterrHasMore = false
+        songsterrLoadingMore = false
+        songsterrLoadMoreFailed = false
         guard pattern.count >= 2 else {
             songsterrResults = []
             songsterrSearching = false
@@ -201,15 +244,38 @@ struct LibraryView: View {
         try? await Task.sleep(for: .milliseconds(400))
         guard !Task.isCancelled else { return }
         do {
-            let results = try await SongsterrClient().search(pattern)
+            let results = try await SongsterrClient().search(pattern, size: Self.songsterrPageSize)
             guard !Task.isCancelled else { return }
             songsterrResults = results
+            songsterrHasMore = results.count == Self.songsterrPageSize
         } catch {
             guard !Task.isCancelled else { return }
             songsterrResults = []
             songsterrError = "Couldn’t search Songsterr: \(error.localizedDescription)"
         }
         songsterrSearching = false
+    }
+
+    private func loadMoreSongsterr() {
+        guard songsterrHasMore, !songsterrLoadingMore, !songsterrSearching else { return }
+        let pattern = trimmedSearch
+        let offset = songsterrResults.count
+        songsterrLoadingMore = true
+        songsterrLoadMoreFailed = false
+        Task {
+            defer { if pattern == trimmedSearch { songsterrLoadingMore = false } }
+            do {
+                let page = try await SongsterrClient().search(pattern, from: offset, size: Self.songsterrPageSize)
+                // Si mientras tanto cambió la búsqueda, descartamos esta página
+                guard pattern == trimmedSearch, offset == songsterrResults.count else { return }
+                let known = Set(songsterrResults.map(\.songId))
+                songsterrResults.append(contentsOf: page.filter { !known.contains($0.songId) })
+                songsterrHasMore = page.count == Self.songsterrPageSize
+            } catch {
+                guard pattern == trimmedSearch else { return }
+                songsterrLoadMoreFailed = true
+            }
+        }
     }
 
     private func importFromSongsterr(_ result: SongsterrClient.SearchResult) {

@@ -62,7 +62,8 @@ Tab sites are great at showing you the notes and bad at letting you **play along
 - Recent Songsterr imports appear right in the import sheet.
 
 ### 🖥️ Mac-native
-- **Space** to play or pause, even with the score focused; **⌘O** to import; **⌘Y** for history.
+- **Keyboard first**: **Space** plays or pauses (even with the score focused), **Home** goes back to the start, **⌘O** imports, **⌘Y** opens history, **⌘+ / ⌘−** zoom and **⌘Z** undoes the last sync mark.
+- **Tooltips everywhere**: hover any button to see what it does (also with a trackpad on iPad).
 - Sandboxed, ad-hoc signed and installable with Homebrew.
 
 ---
@@ -90,16 +91,31 @@ Grab the latest **`Fretline-x.y.z.dmg`** from [**Releases**](https://github.com/
 
 ### iPad · SideStore / AltStore
 
-1. Build the `.ipa` on your Mac:
-   ```sh
-   ./build-ipa.sh            # → Fretline.ipa (unsigned)
-   ```
-2. AirDrop `Fretline.ipa` to your iPad, or save it to iCloud Drive.
-3. In **SideStore** or **AltStore**, go to **My Apps → ＋** and pick the `.ipa`. It gets signed with your Apple ID on install.
+Fretline isn't on the App Store (yet). You can sideload it with your own Apple ID, and no Mac or Xcode is needed.
 
-> With a free Apple ID, sideloaded apps expire after 7 days. SideStore refreshes them in the background as long as you open it now and then.
+1. **Install a sideloading app** on your iPad if you don't have one:
+   - [**SideStore**](https://sidestore.io): refreshes apps on-device, no computer needed after setup.
+   - [**AltStore**](https://altstore.io): needs AltServer running on a Mac or PC on your Wi-Fi to refresh.
+2. **Download the `.ipa`**: on your iPad, open the [**latest release**](https://github.com/rbc33/Fretline/releases/latest) in Safari and tap **`Fretline-x.y.z.ipa`**. It's saved to *Files → Downloads*.
+3. **Install it**: in SideStore or AltStore, go to **My Apps → ＋**, pick the `.ipa`, and sign in with your Apple ID if asked. The app is signed for your device during install.
+4. Open **Fretline**. If iPadOS says *Untrusted Developer*, go to **Settings → General → VPN & Device Management**, tap your Apple ID and choose **Trust**.
 
-Prefer Xcode? Plug in the iPad, open the project, pick your Personal Team under *Signing & Capabilities* and press ▶.
+> **Free Apple ID limits:** sideloaded apps expire after **7 days**, and you can have up to 3 active at a time. Open SideStore (or keep AltServer running) now and then and it refreshes Fretline automatically. Your songs and sync points are kept.
+
+<details>
+<summary><b>Build the .ipa yourself</b></summary>
+
+On a Mac with Xcode:
+
+```sh
+git clone https://github.com/rbc33/Fretline.git && cd Fretline
+brew install xcodegen
+./build-ipa.sh            # → Fretline.ipa (unsigned)
+```
+
+AirDrop `Fretline.ipa` to your iPad and install it as in step 3. Or plug the iPad in, open the project in Xcode, pick your Personal Team under *Signing & Capabilities* and press ▶.
+
+</details>
 
 ---
 
@@ -124,7 +140,7 @@ Choose the **Fretline** scheme for iPad or **FretlineMac** for macOS, then hit �
 | `./build-ipa.sh` | Unsigned `Fretline.ipa` for SideStore / AltStore |
 | `./build-mac.sh` | `dist/Fretline.app` for macOS (ad-hoc signed) |
 | `./build-dmg.sh` | `dist/Fretline-<version>.dmg` with an Applications shortcut, prints the SHA-256 |
-| `./release.sh 0.2.0` | Bumps the version, builds the DMG, creates the GitHub release and updates the Homebrew cask in [`rbc33/homebrew-fretline`](https://github.com/rbc33/homebrew-fretline) |
+| `./release.sh 0.2.0` | Bumps the version, builds the DMG and the IPA, creates the GitHub release with both and updates the Homebrew cask in [`rbc33/homebrew-fretline`](https://github.com/rbc33/homebrew-fretline) |
 
 `release.sh` needs the [GitHub CLI](https://cli.github.com) (`brew install gh && gh auth login`).
 

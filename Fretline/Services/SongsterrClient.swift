@@ -124,10 +124,12 @@ struct SongsterrClient {
         var id: Int { songId }
     }
 
-    /// Búsqueda de canciones (el mismo endpoint que usa el buscador de songsterr.com)
-    func search(_ pattern: String, size: Int = 20) async throws -> [SearchResult] {
+    /// Búsqueda de canciones (el mismo endpoint que usa el buscador de songsterr.com).
+    /// `from` es el desplazamiento para paginar: from=20 devuelve los resultados 21–40.
+    func search(_ pattern: String, from: Int = 0, size: Int = 20) async throws -> [SearchResult] {
         var components = URLComponents(string: "https://www.songsterr.com/api/songs")!
         components.queryItems = [URLQueryItem(name: "size", value: String(size)),
+                                 URLQueryItem(name: "from", value: String(from)),
                                  URLQueryItem(name: "pattern", value: pattern)]
         guard let url = components.url?.absoluteString else { return [] }
         let json = try await getJSON(url, what: "search results")
