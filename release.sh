@@ -3,7 +3,8 @@
 #   1. fija la versión en project.yml
 #   2. genera el .dmg (build-dmg.sh) y el .ipa sin firmar para iPad (build-ipa.sh)
 #   3. crea la release vX.Y.Z en GitHub con el .dmg y el .ipa
-#   4. actualiza la cask del tap de Homebrew (versión + sha256) y la sube
+#   4. actualiza la fuente de SideStore/AltStore (docs/apps.json)
+#   5. actualiza la cask del tap de Homebrew (versión + sha256) y la sube
 #
 # Uso: ./release.sh 0.2.0
 #      ./release.sh 0.1.0 --replace   (rehace una versión ya publicada: borra su release y su etiqueta)
@@ -53,7 +54,10 @@ gh release create "v$VERSION" "$DMG" "$IPA" \
   --title "Fretline $VERSION" \
   --generate-notes
 
-# 4. Cask del tap
+# 4. Fuente de SideStore/AltStore (se publica en GitHub Pages al hacer push)
+python3 tools/update-source.py --ipa "$IPA" --json docs/apps.json --repo "$REPO"
+
+# 5. Cask del tap
 if [ -d "$TAP_DIR/.git" ]; then
   git -C "$TAP_DIR" pull -q --rebase
 else
@@ -75,4 +79,4 @@ echo "   Instalar: brew install --cask rbc33/fretline/fretline"
 echo "   Actualizar: brew upgrade --cask fretline"
 [ "$REPLACE" = "--replace" ] && echo "   (misma versión: brew update && brew reinstall --cask fretline)"
 echo ""
-echo "Recuerda hacer commit del cambio de versión en project.yml."
+echo "Recuerda hacer commit y push de project.yml y docs/apps.json (la fuente de SideStore/AltStore)."

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fretline: guitar tabs synced to the real recording</title>
+  <meta name="description" content="Native guitar tab player for iPad and Mac: Guitar Pro files, YouTube-synced playback, bar loops and a chromatic tuner. Free and open source." />
+  <meta property="og:title" content="Fretline" />
+  <meta property="og:description" content="Learn any song, bar by bar, over the real recording." />
+  <meta property="og:image" content="https://rbc33.github.io/Fretline/icon.png" />
+  <link rel="icon" href="icon.png" />
+  <style>
+    :root {
+      --bg: #f6f8fc; --card: #ffffff; --text: #0d1630; --muted: #5a6680;
+      --accent: #1e7bff; --accent-2: #0a3fbf; --border: #e2e7f2; --code: #eef2fa;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #070d22; --card: #0f1a3a; --text: #eaf0ff; --muted: #9aa8c8;
+              --border: #1d2a52; --code: #14224a; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text);
+           font: 16px/1.55 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; }
+    main { max-width: 720px; margin: 0 auto; padding: 48px 16px 64px; }
+    header { text-align: center; margin-bottom: 36px; }
+    header img { width: 120px; height: 120px; border-radius: 27px; box-shadow: 0 12px 32px rgba(10, 63, 191, .35); }
+    h1 { font-size: 40px; margin: 18px 0 6px; letter-spacing: -0.02em; }
+    .tagline { color: var(--muted); font-size: 19px; margin: 0; }
+    section { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 24px; margin-top: 20px; }
+    h2 { font-size: 20px; margin: 0 0 6px; }
+    p { margin: 6px 0 14px; color: var(--muted); }
+    .buttons { display: flex; flex-wrap: wrap; gap: 10px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 18px;
+           border-radius: 12px; font-weight: 600; text-decoration: none; border: 1px solid transparent; cursor: pointer; font-size: 16px; }
+    .primary { background: var(--accent); color: #fff; }
+    .primary:hover { background: var(--accent-2); }
+    .secondary { background: transparent; color: var(--accent); border-color: var(--border); }
+    code, .url { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 14px; }
+    .url { display: flex; gap: 8px; align-items: center; background: var(--code); border-radius: 10px; padding: 10px 12px; margin-top: 14px;
+           overflow-x: auto; white-space: nowrap; }
+    .url span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    .copy { flex: none; background: none; border: none; color: var(--accent); font-weight: 600; cursor: pointer; font-size: 14px; }
+    pre { background: var(--code); border-radius: 10px; padding: 12px; overflow-x: auto; margin: 0; }
+    ul { margin: 8px 0 0; padding-left: 20px; color: var(--muted); }
+    footer { text-align: center; color: var(--muted); font-size: 14px; margin-top: 32px; }
+    footer a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <img src="icon.png" alt="Fretline icon" />
+      <h1>Fretline</h1>
+      <p class="tagline">Learn any song, bar by bar, over the real recording.</p>
+    </header>
+
+    <section>
+      <h2>iPad · SideStore / AltStore</h2>
+      <p>Add the Fretline source once. New versions then appear as updates in SideStore or AltStore, with no <code>.ipa</code> to download by hand.</p>
+      <div class="buttons">
+        <a class="btn primary" id="add-sidestore" href="#">Add to SideStore</a>
+        <a class="btn primary" id="add-altstore" href="#">Add to AltStore</a>
+      </div>
+      <div class="url">
+        <span id="source-url">https://rbc33.github.io/Fretline/apps.json</span>
+        <button class="copy" id="copy" type="button">Copy</button>
+      </div>
+      <ul>
+        <li>The buttons open the app on your iPad. If nothing happens, copy the URL and add it under <b>Sources → ＋</b>.</li>
+        <li>With a free Apple ID, apps expire after 7 days. SideStore refreshes them in the background.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Mac · Homebrew</h2>
+      <p>macOS 14 or later.</p>
+      <pre><code>brew install --cask rbc33/fretline/fretline</code></pre>
+    </section>
+
+    <section>
+      <h2>What's inside</h2>
+      <ul>
+        <li>Guitar Pro (.gp, .gpx, .gp5…) and MusicXML</li>
+        <li>Tab synced to the YouTube video, with a tap-along sync editor</li>
+        <li>Loop any bars, speed from 25% to 150%, metronome and count-in</li>
+        <li>Mute, solo and hide tracks; page or horizontal layout</li>
+        <li>Built-in chromatic tuner</li>
+        <li>Offline, no account, no ads. Free and open source (GPL-3.0)</li>
+      </ul>
+      <div class="buttons" style="margin-top:16px">
+        <a class="btn secondary" href="https://github.com/rbc33/Fretline">View on GitHub</a>
+        <a class="btn secondary" href="https://github.com/rbc33/Fretline/releases/latest">Latest release</a>
+      </div>
+    </section>
+
+    <footer>Made by <a href="https://github.com/rbc33">@rbc33</a></footer>
+  </main>
+
+  <script>
+    const sourceURL = new URL('apps.json', location.href).href;
+    document.getElementById('source-url').textContent = sourceURL;
+    const encoded = encodeURIComponent(sourceURL);
+    document.getElementById('add-sidestore').href = 'sidestore://source?url=' + encoded;
+    document.getElementById('add-altstore').href = 'altstore://source?url=' + encoded;
+    document.getElementById('copy').addEventListener('click', async (e) => {
+      try {
+        await navigator.clipboard.writeText(sourceURL);
+        e.target.textContent = 'Copied';
+      } catch {
+        e.target.textContent = 'Select and copy';
+      }
+      setTimeout(() => (e.target.textContent = 'Copy'), 2000);
+    });
+  </script>
+</body>
+</html>
