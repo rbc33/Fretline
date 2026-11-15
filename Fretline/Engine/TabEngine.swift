@@ -48,6 +48,8 @@ final class TabEngine: NSObject, WKScriptMessageHandler {
     private(set) var syncProgress: SyncProgress?
     /// WebKit no deja arrancar el audio del sintetizador hasta que se toque la partitura
     private(set) var audioBlocked = false
+    /// Latencia de salida que informa el sistema (ms), usada en modo automático
+    private(set) var autoLatencyMs = 0
     var lastError: String?
 
     // Medio externo (YouTube): alphaTab pide, nosotros reenviamos
@@ -131,6 +133,10 @@ final class TabEngine: NSObject, WKScriptMessageHandler {
     func externalTime(_ ms: Double) { invoke("externalTime", [ms], queueIfNotReady: false) }
     func externalDuration(_ ms: Double) { invoke("externalDuration", [ms]) }
     func externalState(playing: Bool) { invoke("externalState", [playing]) }
+    /// Pre-roll de YouTube: el cursor espera quieto hasta `ms` (tiempo del vídeo)
+    func holdExternal(untilMs ms: Double) { invoke("holdExternal", [ms]) }
+    /// Retraso del cursor para igualar lo que tarda el sonido en oírse. Negativo = automático.
+    func setLatency(ms: Int) { invoke("setLatency", [ms < 0 ? NSNull() as Any : ms as Any]) }
 
     // Sincronización
     func markNextBar(atMs ms: Double) { invoke("markNextBar", [ms]) }
@@ -197,6 +203,9 @@ final class TabEngine: NSObject, WKScriptMessageHandler {
 
         case "audioBlocked":
             audioBlocked = true
+
+        case "latency":
+            autoLatencyMs = Int(num("autoMs") ?? 0)
 
         case "audioUnblocked":
             audioBlocked = false

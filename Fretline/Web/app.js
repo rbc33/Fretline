@@ -41,6 +41,9 @@ const state = {
   barSel: null,         // { start, end } índices de compás (0-based)
   barAnchor: null,      // primer compás tocado, esperando el segundo
   savedRange: null,     // rango guardado mientras se cambia de modo
+  latencyMs: null,      // compensación de latencia: null = automática
+  holdUntil: null,      // YouTube: el cursor espera quieto hasta este tiempo (pre-roll)
+  lastAudioActivity: 0, // última vez que sonó algo (para saber si hay que «calentar» el audio)
   downBar: null,
   switching: false,
 };
@@ -105,6 +108,8 @@ function createApi() {
     api.metronomeVolume = state.mode === 'synth' ? state.metronome : 0;
     api.countInVolume = state.mode === 'synth' && state.countIn ? 1 : 0;
     if (state.mode === 'youtube') attachExternalHandler();
+    patchSynthOutput();
+    post('latency', { autoMs: autoLatency(), mode: state.mode });
     // Tras cambiar de modo, seguimos en el mismo compás
     if (state.resumeTick != null) {
       api.tickPosition = state.resumeTick;
@@ -269,6 +274,63 @@ function hookAudioContext() {
   });
 }
 
+// ---------- latencia y arranque ----------
+const WARM_UP_MS = 350;     // tiempo de silencio para despertar la salida de audio
+const WARM_IDLE_MS = 4000;  // si llevaba más que esto sin sonar, se calienta antes de tocar
+
+// Latencia de salida que informa el navegador (altavoz, Bluetooth…)
+function autoLatency() {
+  const ctx = audioContext();
+  if (!ctx) return 0;
+  return Math.round(((ctx.outputLatency || 0) + (ctx.baseLatency || 0)) * 1000);
+}
+function latency() {
+  return state.latencyMs != null ? state.latencyMs : (state.mode === 'synth' ? autoLatency() : 0);
+}
+
+function warmUpOutput(ms) {
+  const ctx = audioContext();
+  if (!ctx || ctx.state !== 'running') return Promise.resolve();
+  return new Promise((resolve) => {
+    try {
+      // Ruido a −100 dB: inaudible, pero cuenta como sonido y despierta la salida
+      const buffer = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * ms / 1000), ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 1e-5;
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      src.connect(ctx.destination);
+      src.onended = () => { try { src.disconnect(); } catch {} resolve(); };
+      src.start();
+    } catch {
+      resolve();
+    }
+  });
+}
+
+// El cursor del sintetizador avanza con las muestras entregadas a la salida, no con las
+// que ya se oyen. Retrasamos ese aviso lo que tarda el sonido en llegar al altavoz.
+function patchSynthOutput() {
+  const out = state.api?.player?.instance?.output || state.api?.player?.output;
+  if (!out || out.__fretlinePatched || typeof out.onSamplesPlayed !== 'function') return;
+  out.__fretlinePatched = true;
+  let epoch = 0;
+  const original = out.onSamplesPlayed.bind(out);
+  out.onSamplesPlayed = (samples) => {
+    if (state.mode === 'synth') state.lastAudioActivity = Date.now();
+    const delay = state.mode === 'synth' ? latency() : 0;
+    if (delay <= 0) return original(samples);
+    const myEpoch = epoch;
+    setTimeout(() => { if (myEpoch === epoch) original(samples); }, delay);
+  };
+  // Al buscar o parar, se descartan los avisos pendientes de la posición anterior
+  for (const name of ['resetSamples', 'pause']) {
+    if (typeof out[name] !== 'function') continue;
+    const fn = out[name].bind(out);
+    out[name] = (...args) => { epoch++; return fn(...args); };
+  }
+}
+
 let recovering = false;
 async function recoverPlayback(reason) {
   if (recovering || !state.wantPlaying || state.mode !== 'synth') return;
@@ -311,6 +373,14 @@ async function playChecked() {
   state.wantPlaying = true;
   const ok = await ensureAudioRunning();
   hookAudioContext();
+  patchSynthOutput();
+  // Si la salida llevaba un rato parada, iOS tarda en ponerla en marcha y se comería
+  // las primeras notas mientras el cursor ya avanza: la «calentamos» en silencio antes.
+  if (ok && state.mode === 'synth' && Date.now() - state.lastAudioActivity > WARM_IDLE_MS) {
+    await warmUpOutput(WARM_UP_MS);
+    if (!state.wantPlaying) return; // se pausó mientras calentaba
+  }
+  state.lastAudioActivity = Date.now();
   api.play();
   if (!ok) {
     state.pendingPlay = true;
@@ -346,9 +416,9 @@ function attachExternalHandler() {
     set playbackRate(v) { post('externalRate', { rate: v }); },
     get masterVolume() { return 1; },
     set masterVolume(_v) {},
-    seekTo(ms) { post('externalSeek', { ms }); },
+    seekTo(ms) { state.holdUntil = null; post('externalSeek', { ms }); },
     play() { post('externalPlay'); },
-    pause() { post('externalPause'); },
+    pause() { state.holdUntil = null; post('externalPause'); },
   };
 }
 
@@ -411,7 +481,7 @@ window.fretline = {
   },
 
   play() { playChecked(); },
-  pause() { state.wantPlaying = false; state.pendingPlay = false; state.api?.pause(); },
+  pause() { state.wantPlaying = false; state.pendingPlay = false; state.holdUntil = null; state.api?.pause(); },
   playPause() {
     const api = state.api;
     if (!api) return;
@@ -499,9 +569,20 @@ window.fretline = {
   // --- YouTube: Swift -> JS ---
   externalTime(ms) {
     if (state.mode !== 'youtube') return;
+    const adjusted = Math.max(0, ms - latency());
+    // Pre-roll: el vídeo arranca un poco antes y el cursor espera hasta el punto de inicio
+    if (state.holdUntil != null) {
+      if (adjusted < state.holdUntil) return;
+      state.holdUntil = null;
+    }
     const out = state.api?.player?.output;
-    out?.updatePosition?.(ms);
+    out?.updatePosition?.(adjusted);
   },
+  // Swift avisa de que el vídeo arranca antes de `ms` para que suene ya al llegar al cursor
+  holdExternal(ms) { state.holdUntil = ms; },
+  // null = automática
+  setLatency(ms) { state.latencyMs = ms == null || ms < 0 ? null : ms; },
+  latencyInfo() { return { autoMs: autoLatency(), effectiveMs: latency() }; },
   externalDuration(ms) { state.videoDuration = ms; },
   // Cuando el usuario toca play/pausa directamente en el vídeo
   externalState(playing) {

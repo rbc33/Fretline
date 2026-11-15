@@ -29,6 +29,11 @@ private struct PlayerContent: View {
 
     @State private var mode: PlaybackMode = .synth
     @State private var speed: Double = 1.0
+    /// Retraso del cursor respecto al reloj de audio, en ms (−1 = automático)
+    @AppStorage("audioLatencyMs") private var latencyMs: Int = -1
+    private static let latencyOptions = [-1, 0, 50, 100, 150, 200, 250, 300, 400]
+    /// El vídeo arranca este tiempo antes del cursor para que ya suene al empezar
+    private static let youtubePrerollMs: Double = 500
     @State private var looping = false
     @State private var metronome = false
     @State private var countIn = false
@@ -204,10 +209,22 @@ private struct PlayerContent: View {
                 Picker("Speed", selection: Binding(get: { speed }, set: setSpeed)) {
                     ForEach(speeds, id: \.self) { Text("\(Int(($0 * 100).rounded())) %").tag($0) }
                 }
+                Section("Cursor delay (audio latency)") {
+                    Picker("Cursor delay", selection: $latencyMs) {
+                        ForEach(Self.latencyOptions, id: \.self) { value in
+                            if value < 0 {
+                                Text(mode == .synth ? "Auto (\(engine.autoLatencyMs) ms)" : "Auto (0 ms)").tag(value)
+                            } else {
+                                Text("\(value) ms").tag(value)
+                            }
+                        }
+                    }
+                }
             } label: {
                 Label("\(Int((speed * 100).rounded())) %", systemImage: "speedometer").monospacedDigit()
             }
-            .help("Playback speed")
+            .help("Playback speed and cursor delay. Raise the delay if the cursor runs ahead of the sound (e.g. with Bluetooth headphones)")
+            .onChange(of: latencyMs) { _, value in engine.setLatency(ms: value) }
 
             Toggle(isOn: $barSelecting) {
                 Label(barLabel, systemImage: "rectangle.dashed")
@@ -318,7 +335,17 @@ private struct PlayerContent: View {
                 engine.playPause()
             }
         }
-        engine.onExternalPlay = { if mode == .youtube { youtube.play() } }
+        engine.onExternalPlay = {
+            guard mode == .youtube else { return }
+            // Pre-roll: el vídeo arranca medio segundo antes y el cursor espera al punto de inicio,
+            // así el sonido ya ha arrancado cuando el cursor empieza a moverse.
+            let start = youtube.currentTimeMs
+            if !youtube.isPlaying, start > 0 {
+                engine.holdExternal(untilMs: start)
+                youtube.seek(toMs: max(0, start - Self.youtubePrerollMs))
+            }
+            youtube.play()
+        }
         engine.onExternalPause = { youtube.pause() }
         engine.onExternalSeek = { ms in if mode == .youtube { youtube.seek(toMs: ms) } }
         engine.onExternalRate = { rate in youtube.setRate(rate) }
@@ -332,6 +359,7 @@ private struct PlayerContent: View {
         if initialMode == .youtube, let id = song.youtubeVideoId { youtube.load(videoId: id) }
         engine.loadSong(url: LocalSchemeHandler.songURL(song.fileName), syncPoints: song.syncPoints, mode: initialMode)
         engine.setSpeed(speed)
+        engine.setLatency(ms: latencyMs)
     }
 
     private func setSpeed(_ value: Double) {
