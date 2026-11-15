@@ -7,7 +7,9 @@
   "website": "https://github.com/rbc33/Fretline",
   "tintColor": "#1E7BFF",
   "nsfw": false,
-  "featuredApps": ["com.rbc33.fretline"],
+  "featuredApps": [
+    "com.rbc33.fretline"
+  ],
   "apps": [
     {
       "name": "Fretline",
@@ -18,7 +20,17 @@
       "iconURL": "https://rbc33.github.io/Fretline/icon.png",
       "tintColor": "#1E7BFF",
       "category": "entertainment",
-      "versions": [],
+      "versions": [
+        {
+          "version": "0.3.1",
+          "buildVersion": "34",
+          "date": "2026-11-15T18:49:04+00:00",
+          "localizedDescription": "Fretline 0.3.1. Full release notes: https://github.com/rbc33/Fretline/releases/tag/v0.3.1",
+          "downloadURL": "https://github.com/rbc33/Fretline/releases/download/v0.3.1/Fretline-0.3.1.ipa",
+          "size": 2904565,
+          "minOSVersion": "17.0"
+        }
+      ],
       "appPermissions": {
         "entitlements": [],
         "privacy": {
