@@ -12,6 +12,7 @@ A native guitar tab player for **iPad and Mac**. Open Guitar Pro files, follow t
 [![Swift](https://img.shields.io/badge/Swift-SwiftUI%20%2B%20SwiftData-F05138?style=flat-square&logo=swift&logoColor=white)](#build-from-source)
 [![Homebrew](https://img.shields.io/badge/brew-rbc33%2Ffretline-FBB040?style=flat-square&logo=homebrew&logoColor=black)](#macos--homebrew-recommended)
 [![Release](https://img.shields.io/github/v/release/rbc33/Fretline?style=flat-square&color=0A3FBF)](https://github.com/rbc33/Fretline/releases/latest)
+[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-2EA44F?style=flat-square)](LICENSE)
 
 [**Install**](#install) · [**Features**](#features) · [**Build from source**](#build-from-source) · [**How it works**](#how-it-works)
 
@@ -213,6 +214,10 @@ Ideas and PRs are welcome. Open an [issue](https://github.com/rbc33/Fretline/iss
 - **Songsterr** has no public API. The importer uses the same endpoints as their web player, which may change without notice, and downloading their content may go against their Terms of Service. It's intended for **personal use only** and lives in two isolated files (`SongsterrClient.swift`, `Web/songsterr/convert.js`) so it's easy to remove.
 - **YouTube**: some videos disable embedding (errors 101/150). Fretline tells you and lets you pick another.
 - Fretline is an independent project and is **not affiliated** with Songsterr, Arobas Music (Guitar Pro) or YouTube.
+
+## License
+
+Fretline is free software under the [GNU General Public License v3.0](LICENSE): you can use, study, share and modify it, and any distributed modified version must stay open source under the same license. Bundled third-party components keep their own licenses (see [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)).
 
 ## Credits
 
