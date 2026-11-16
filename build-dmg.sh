@@ -16,7 +16,8 @@ trap 'rm -rf "$STAGE"' EXIT
 ditto "$APP" "$STAGE/Fretline.app"
 ln -s /Applications "$STAGE/Applications"
 
-rm -f "$DMG"
+# Solo se conserva el DMG de esta versión
+rm -f dist/Fretline-*.dmg
 hdiutil create \
   -volname "Fretline $VERSION" \
   -srcfolder "$STAGE" \

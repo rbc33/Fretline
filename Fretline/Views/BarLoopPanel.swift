@@ -6,7 +6,16 @@ import SwiftUI
 struct BarLoopPanel: View {
     let engine: TabEngine
     @Binding var looping: Bool
+    /// Cambios de cuerda de esta sesión (temporales hasta pulsar Keep)
+    var unsavedEditCount: Int = 0
+    /// Cambios de cuerda guardados en sesiones anteriores
+    var savedEditCount: Int = 0
+    var onUndoEdit: () -> Void = {}
+    var onKeepEdits: () -> Void = {}
+    var onResetEdits: () -> Void = {}
     var onDone: () -> Void
+
+    @State private var confirmReset = false
 
     var body: some View {
         HStack(spacing: 14) {
@@ -41,6 +50,22 @@ struct BarLoopPanel: View {
                 }
                 .buttonStyle(.bordered)
 
+                // Mover el pasaje a la cuerda vecina sonando igual (p. ej. un riff de la 6ª a la 5ª)
+                VStack(spacing: 2) {
+                    Text("String").font(.caption2).foregroundStyle(.secondary)
+                    HStack(spacing: 4) {
+                        Button { engine.moveSelectionToString(1) } label: { Image(systemName: "arrow.up") }
+                            .help("Move these bars one string up, same notes (e.g. 6th → 5th string)")
+                        Button { engine.moveSelectionToString(-1) } label: { Image(systemName: "arrow.down") }
+                            .help("Move these bars one string down, same notes (e.g. 5th → 6th string)")
+                        Button(action: onUndoEdit) { Image(systemName: "arrow.uturn.backward") }
+                            .disabled(unsavedEditCount == 0)
+                            .help("Undo the last string move")
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+
                 Toggle(isOn: $looping) { Label("Repeat", systemImage: "repeat") }
                     .toggleStyle(.button)
                     .help(looping ? "Stop looping these bars" : "Loop these bars")
@@ -50,6 +75,20 @@ struct BarLoopPanel: View {
                     looping = false
                 } label: { Image(systemName: "xmark.circle") }
                     .help("Clear selection")
+            }
+
+            // Los cambios de cuerda son temporales: se pierden al cerrar la canción salvo que se guarden
+            if unsavedEditCount > 0 {
+                Button("Keep Changes", systemImage: "pin.fill", action: onKeepEdits)
+                    .buttonStyle(.borderedProminent)
+                    .help("String changes are temporary and disappear when you close the song. Keep them to see them next time (your original file is never modified)")
+            } else if savedEditCount > 0 {
+                Button("Reset to Original", systemImage: "arrow.counterclockwise") { confirmReset = true }
+                    .help("Remove the saved string changes and go back to the original tab")
+                    .confirmationDialog("Remove the saved string changes and go back to the original tab?",
+                                        isPresented: $confirmReset, titleVisibility: .visible) {
+                        Button("Reset to Original", role: .destructive, action: onResetEdits)
+                    }
             }
 
             Button("Done", action: onDone).bold()

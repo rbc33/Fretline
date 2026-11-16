@@ -42,6 +42,7 @@ const state = {
   barAnchor: null,      // primer compás tocado, esperando el segundo
   savedRange: null,     // rango guardado mientras se cambia de modo
   latencyMs: null,      // compensación de latencia: null = automática
+  edits: [],            // ediciones guardadas (mover compases de cuerda) a aplicar al cargar
   holdUntil: null,      // YouTube: el cursor espera quieto hasta este tiempo (pre-roll)
   lastAudioActivity: 0, // última vez que sonó algo (para saber si hay que «calentar» el audio)
   downBar: null,
@@ -85,6 +86,8 @@ function createApi() {
 
   api.scoreLoaded.on((score) => {
     applySyncPointsToScore(score);
+    // Las ediciones se guardan aparte (el archivo original no se toca) y se aplican al cargar
+    for (const op of state.edits) moveStrings(score, op);
     post('scoreLoaded', {
       title: score.title,
       artist: score.artist,
@@ -233,6 +236,88 @@ function selectBars(start, end) {
     api.tickPosition = range.startTick;
   }
   post('barSelection', { start, end, waitingForEnd: state.barAnchor != null });
+}
+
+// ---------- mover compases a otra cuerda ----------
+// alphaTab numera las cuerdas desde la más grave (1 = 6ª de la guitarra).
+// delta +1 = hacia el agudo (p. ej. de la 6ª a la 5ª), −1 = hacia el grave.
+// El traste se recalcula para que cada nota suene exactamente igual.
+const MAX_FRET = 24;
+
+function stringPitch(staff, string) {
+  const t = staff.stringTuning.tunings; // de aguda a grave
+  return t[t.length - string];
+}
+
+// op: { tracks: [índices], start, end, delta }.
+// Mueve las notas que caben; las que no (cuerda del borde, traste negativo o mayor que 24,
+// armónico natural, o cuerda destino ocupada por una nota que se queda) se dejan donde están.
+// Es determinista: aplicar la misma op al mismo estado da siempre el mismo resultado.
+function moveStrings(score, op) {
+  let moved = 0;
+  let skipped = 0;
+  const skippedBars = new Set();
+  for (const ti of op.tracks) {
+    const track = score.tracks[ti];
+    if (!track) continue;
+    for (const staff of track.staves) {
+      const count = staff.stringTuning?.tunings?.length ?? 0;
+      if (staff.isPercussion || count === 0) continue;
+      for (let b = op.start; b <= op.end && b < staff.bars.length; b++) {
+        for (const voice of staff.bars[b].voices) {
+          for (const beat of voice.beats) {
+            const notes = beat.notes.filter((n) => !n.isPercussion);
+            if (!notes.length) continue;
+            // 1. Destino de cada nota, o null si no puede moverse
+            const plan = new Map();
+            for (const note of notes) {
+              const target = note.string + op.delta;
+              const fret = target >= 1 && target <= count
+                ? note.fret + stringPitch(staff, note.string) - stringPitch(staff, target)
+                : -1;
+              const ok = fret >= 0 && fret <= MAX_FRET && note.harmonicType !== alphaTab.model.HarmonicType.Natural;
+              plan.set(note, ok ? { string: target, fret } : null);
+            }
+            // 2. Si una nota que se queda ocupa la cuerda destino de otra, esa también se queda
+            let changed = true;
+            while (changed) {
+              changed = false;
+              const occupied = new Set(notes.filter((n) => plan.get(n) === null).map((n) => n.string));
+              for (const note of notes) {
+                const p = plan.get(note);
+                if (p && occupied.has(p.string)) { plan.set(note, null); changed = true; }
+              }
+            }
+            // 3. Aplicar
+            for (const note of notes) {
+              const p = plan.get(note);
+              if (p) { note.string = p.string; note.fret = p.fret; moved++; }
+              else { skipped++; skippedBars.add(b + 1); }
+            }
+          }
+        }
+      }
+    }
+  }
+  return { moved, skipped, skippedBars: [...skippedBars] };
+}
+
+function ordinal(n) {
+  return n + (n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th');
+}
+
+// Vuelve a dibujar y a generar el audio tras editar, manteniendo selección y posición
+function refreshAfterEdit() {
+  const api = state.api;
+  const sel = state.barSel;
+  const tick = api.tickPosition;
+  const off = api.renderFinished.on(() => {
+    off();
+    if (sel) selectBars(sel.start, sel.end);
+    api.tickPosition = tick;
+  });
+  api.render();
+  api.loadMidiForScore();
 }
 
 function clearBarSelection() {
@@ -464,6 +549,7 @@ window.fretline = {
   loadSong(song) {
     state.songUrl = song.url;
     state.syncPoints = song.syncPoints || [];
+    state.edits = song.edits || [];
     state.visibleTracks = null;
     const mode = song.mode || 'synth';
     if (!state.api || mode !== state.mode) {
@@ -518,6 +604,39 @@ window.fretline = {
     selectBars(start, end);
   },
   // Mueve todo el bucle (p. ej. al siguiente grupo de compases)
+  // Mueve los compases seleccionados de las pistas visibles a la cuerda vecina
+  moveSelectionToString(delta) {
+    const api = state.api;
+    const sel = state.barSel;
+    if (!api?.score || !sel) return post('notice', { message: 'Select one or more bars first.' });
+    const op = { tracks: api.tracks.map((t) => t.index), start: sel.start, end: sel.end, delta };
+    const result = moveStrings(api.score, op);
+    if (result.moved === 0) {
+      // No es un error: las notas que no caben se quedan como están (aquí, todas)
+      return post('notice', { message: result.skipped
+        ? `No notes fit on the ${op.delta > 0 ? 'higher' : 'lower'} string here, so they stayed where they were.`
+        : 'There are no notes to move in the selected bars.' });
+    }
+    state.edits.push(op);
+    refreshAfterEdit();
+    post('edited', { op, moved: result.moved, skipped: result.skipped, skippedBars: result.skippedBars });
+  },
+  // Deshacer: recarga la canción y vuelve a aplicar las ediciones que quedan.
+  // Es exacto aunque el último cambio fuera parcial (algunas notas se quedaron en su sitio).
+  reloadWithEdits(edits) {
+    const api = state.api;
+    if (!api || !state.songUrl) return;
+    state.edits = edits || [];
+    const sel = state.barSel;
+    const tick = api.tickPosition;
+    const off = api.renderFinished.on(() => {
+      off();
+      if (sel) selectBars(sel.start, sel.end);
+      api.tickPosition = tick;
+    });
+    api.load(state.songUrl);
+  },
+
   shiftBarSelection(delta) {
     const sel = state.barSel;
     if (!sel) return;

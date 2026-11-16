@@ -4,5 +4,4 @@ build/
 DerivedData/
 .DS_Store
 xcuserdata/
-*.ipa
 dist/

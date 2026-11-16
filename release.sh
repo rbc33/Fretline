@@ -22,6 +22,9 @@ TAP="${FRETLINE_TAP:-rbc33/homebrew-fretline}"
 # Copia local del tap (si existe se actualiza ahí; si no, se clona en una carpeta temporal)
 TAP_DIR="${FRETLINE_TAP_DIR:-../homebrew-fretline}"
 
+# 0. Empezar limpio: fuera builds, DMG e IPA de versiones anteriores
+./clean.sh
+
 # 1. Versión (MARKETING_VERSION) y número de build (nº de commits)
 BUILD=$(git rev-list --count HEAD 2>/dev/null || echo 1)
 sed -i '' -E "s/MARKETING_VERSION: \"[^\"]*\"/MARKETING_VERSION: \"$VERSION\"/" project.yml
@@ -71,6 +74,9 @@ sed -i '' -E "s/^  version \"[^\"]*\"/  version \"$VERSION\"/" "$CASK"
 sed -i '' -E "s/^  sha256 .*/  sha256 \"$SHA\"/" "$CASK"
 git -C "$TAP_DIR" commit -qam "fretline $VERSION"
 git -C "$TAP_DIR" push -q
+
+# Fuera archivos intermedios; en dist/ quedan solo el DMG, el IPA y la app de esta versión
+rm -rf build Payload
 
 echo ""
 echo "✅ Fretline $VERSION publicada"

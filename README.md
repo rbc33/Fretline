@@ -48,6 +48,7 @@ Tab sites are great at showing you the notes and bad at letting you **play along
 
 ### 🔁 Practice tools
 - **Bar loops**: tap a start bar and an end bar (or drag across them) to loop just that section. Adjust each edge with −/+ or jump the whole loop to the next phrase with one tap.
+- **Move a passage to another string**: shift the selected bars one string up or down (say, a riff from the 6th string to the 5th) and every note stays the same pitch. Notes that don't fit on the new string stay where they are. Changes are temporary until you tap **Keep Changes**, you can undo them one by one or **Reset to Original**, and your original file is never modified.
 - **Loops survive mode switches**: flip between synth and video and your selection stays put.
 - **Speed control** from 25% to 150% (synth) or 25% to 200% (video).
 - **Metronome** and **count-in**.
@@ -152,6 +153,7 @@ Choose the **Fretline** scheme for iPad or **FretlineMac** for macOS, then hit �
 | `./build-mac.sh` | `dist/Fretline.app` for macOS (ad-hoc signed) |
 | `./build-dmg.sh` | `dist/Fretline-<version>.dmg` with an Applications shortcut, prints the SHA-256 |
 | `./release.sh 0.2.0` | Bumps the version, builds the DMG and the IPA, creates the GitHub release with both, adds the version to the SideStore/AltStore source (`docs/apps.json`) and updates the Homebrew cask in [`rbc33/homebrew-fretline`](https://github.com/rbc33/homebrew-fretline) |
+| `./clean.sh` | Removes `build/`, `dist/` and leftover IPA files (`--all` also removes the generated Xcode project). `release.sh` runs it automatically |
 | `./update-source.sh 0.3.0` | Adds an already published release to the SideStore/AltStore source |
 
 `release.sh` needs the [GitHub CLI](https://cli.github.com) (`brew install gh && gh auth login`).

@@ -44,6 +44,8 @@ private struct PlayerContent: View {
     @State private var syncEditing = false
     @State private var barSelecting = false
     @State private var showTuner = false
+    /// Cambios de cuerda de esta sesión: temporales, se pierden al salir salvo que se pulse Keep
+    @State private var sessionEdits: [StringEdit] = []
     @State private var videoCorner: Alignment = .bottomTrailing
     @State private var videoMinimized = false
     @State private var didSetup = false
@@ -75,6 +77,24 @@ private struct PlayerContent: View {
             }
         }
         .animation(.snappy, value: engine.audioBlocked)
+        .overlay(alignment: .top) {
+            if let notice = engine.notice {
+                Label(notice, systemImage: "info.circle.fill")
+                    .font(.callout)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(.regularMaterial, in: Capsule())
+                    .padding(.top, engine.audioBlocked ? 60 : 12)
+                    .padding(.horizontal, 20)
+                    .onTapGesture { engine.notice = nil }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .task(id: notice) {
+                        try? await Task.sleep(for: .seconds(5))
+                        if engine.notice == notice { engine.notice = nil }
+                    }
+            }
+        }
+        .animation(.snappy, value: engine.notice)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: 0) {
                 if syncEditing {
@@ -82,7 +102,12 @@ private struct PlayerContent: View {
                     Divider()
                 }
                 if barSelecting {
-                    BarLoopPanel(engine: engine, looping: $looping) { barSelecting = false }
+                    BarLoopPanel(engine: engine, looping: $looping,
+                                 unsavedEditCount: sessionEdits.count,
+                                 savedEditCount: song.edits.count,
+                                 onUndoEdit: undoLastEdit,
+                                 onKeepEdits: keepEdits,
+                                 onResetEdits: resetEdits) { barSelecting = false }
                     Divider()
                 }
                 transportBar
@@ -357,9 +382,31 @@ private struct PlayerContent: View {
         let initialMode: PlaybackMode = (song.youtubeVideoId != nil && !song.syncPoints.isEmpty) ? .youtube : .synth
         mode = initialMode
         if initialMode == .youtube, let id = song.youtubeVideoId { youtube.load(videoId: id) }
-        engine.loadSong(url: LocalSchemeHandler.songURL(song.fileName), syncPoints: song.syncPoints, mode: initialMode)
+        engine.onEdited = { op in sessionEdits.append(op) }
+        engine.loadSong(url: LocalSchemeHandler.songURL(song.fileName), syncPoints: song.syncPoints,
+                        edits: song.edits, mode: initialMode)
         engine.setSpeed(speed)
         engine.setLatency(ms: latencyMs)
+    }
+
+    private func undoLastEdit() {
+        guard sessionEdits.popLast() != nil else { return }
+        engine.reloadWithEdits(song.edits + sessionEdits)
+    }
+
+    /// Guarda los cambios de esta sesión para que se apliquen al volver a abrir la canción
+    private func keepEdits() {
+        song.edits += sessionEdits
+        sessionEdits = []
+        engine.notice = "String changes kept. They'll be there next time you open this song."
+    }
+
+    /// Borra los cambios guardados y vuelve a la tab original
+    private func resetEdits() {
+        song.edits = []
+        sessionEdits = []
+        engine.reloadWithEdits([])
+        engine.notice = "Back to the original tab."
     }
 
     private func setSpeed(_ value: Double) {

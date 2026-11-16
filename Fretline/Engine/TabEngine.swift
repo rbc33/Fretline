@@ -59,6 +59,9 @@ final class TabEngine: NSObject, WKScriptMessageHandler {
     @ObservationIgnored var onExternalRate: ((Double) -> Void)?
     @ObservationIgnored var onScoreLoaded: ((_ title: String, _ artist: String) -> Void)?
     @ObservationIgnored var onSyncPointsChanged: (([SyncPoint]) -> Void)?
+    @ObservationIgnored var onEdited: ((StringEdit) -> Void)?
+    /// Aviso breve (no es un error), p. ej. notas que no se pudieron mover
+    var notice: String?
     /// Barra espaciadora pulsada con el foco dentro de la partitura (Mac)
     @ObservationIgnored var onSpace: (() -> Void)?
 
@@ -90,14 +93,20 @@ final class TabEngine: NSObject, WKScriptMessageHandler {
 
     // MARK: - Comandos
 
-    func loadSong(url: URL, syncPoints: [SyncPoint], mode: PlaybackMode) {
+    func loadSong(url: URL, syncPoints: [SyncPoint], edits: [StringEdit] = [], mode: PlaybackMode) {
         self.syncPoints = syncPoints
         currentMode = mode
         isPlayerReady = false
         invoke("loadSong", [["url": url.absoluteString,
                              "syncPoints": syncPoints.map(\.dict),
+                             "edits": edits.map(\.dict),
                              "mode": mode.rawValue]])
     }
+
+    /// Mueve los compases seleccionados a la cuerda vecina (+1 hacia el agudo, −1 hacia el grave)
+    func moveSelectionToString(_ delta: Int) { invoke("moveSelectionToString", [delta]) }
+    /// Deshacer: recarga la canción aplicando solo estas ediciones
+    func reloadWithEdits(_ edits: [StringEdit]) { invoke("reloadWithEdits", [edits.map(\.dict)]) }
 
     func setMode(_ mode: PlaybackMode) {
         guard mode != currentMode else { return }
@@ -203,6 +212,22 @@ final class TabEngine: NSObject, WKScriptMessageHandler {
 
         case "audioBlocked":
             audioBlocked = true
+
+        case "edited":
+            if let op = (body["op"] as? [String: Any]).flatMap(StringEdit.init(dict:)) { onEdited?(op) }
+            let moved = Int(num("moved") ?? 0)
+            let skipped = Int(num("skipped") ?? 0)
+            if skipped > 0 {
+                let bars = (body["skippedBars"] as? [NSNumber] ?? []).map { "\($0.intValue)" }
+                let where_ = bars.isEmpty ? "" : (bars.count == 1 ? " (bar \(bars[0]))" : " (bars \(bars.joined(separator: ", ")))")
+                notice = "Moved \(moved) notes. \(skipped) didn’t fit on the new string and stayed where they were\(where_)."
+            }
+
+        case "editFailed":
+            lastError = body["message"] as? String
+
+        case "notice":
+            notice = body["message"] as? String
 
         case "latency":
             autoLatencyMs = Int(num("autoMs") ?? 0)

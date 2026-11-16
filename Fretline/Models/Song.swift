@@ -35,6 +35,30 @@ struct SyncPoint: Codable, Hashable {
     }
 }
 
+/// Edición no destructiva: mover unos compases a la cuerda vecina sin cambiar las notas.
+/// Se guarda aparte y se aplica al cargar; el archivo original no se modifica.
+struct StringEdit: Codable, Hashable {
+    /// Índices de las pistas a las que se aplicó (las visibles en ese momento)
+    var tracks: [Int]
+    var start: Int
+    var end: Int
+    /// +1 = hacia el agudo (p. ej. de la 6ª a la 5ª), −1 = hacia el grave
+    var delta: Int
+
+    init?(dict: [String: Any]) {
+        guard let tracks = (dict["tracks"] as? [NSNumber])?.map(\.intValue),
+              let start = (dict["start"] as? NSNumber)?.intValue,
+              let end = (dict["end"] as? NSNumber)?.intValue,
+              let delta = (dict["delta"] as? NSNumber)?.intValue else { return nil }
+        self.tracks = tracks
+        self.start = start
+        self.end = end
+        self.delta = delta
+    }
+
+    var dict: [String: Any] { ["tracks": tracks, "start": start, "end": end, "delta": delta] }
+}
+
 @Model
 final class Song {
     @Attribute(.unique) var id: UUID
@@ -47,6 +71,8 @@ final class Song {
     var songsterrId: Int?
     var youtubeVideoId: String?
     var syncPointsData: Data?
+    /// Ediciones de cuerda (JSON de [StringEdit]); opcional para migrar canciones antiguas sin problema
+    var editsData: Data?
     var lastSpeed: Double
     var favorite: Bool
     var addedAt: Date
@@ -78,6 +104,16 @@ final class Song {
         }
         set {
             syncPointsData = newValue.isEmpty ? nil : try? JSONEncoder().encode(newValue)
+        }
+    }
+
+    var edits: [StringEdit] {
+        get {
+            guard let data = editsData else { return [] }
+            return (try? JSONDecoder().decode([StringEdit].self, from: data)) ?? []
+        }
+        set {
+            editsData = newValue.isEmpty ? nil : try? JSONEncoder().encode(newValue)
         }
     }
 
