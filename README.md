@@ -152,7 +152,7 @@ Choose the **Fretline** scheme for iPad or **FretlineMac** for macOS, then hit â
 | `./build-ipa.sh` | Unsigned `Fretline.ipa` for SideStore / AltStore |
 | `./build-mac.sh` | `dist/Fretline.app` for macOS (ad-hoc signed) |
 | `./build-dmg.sh` | `dist/Fretline-<version>.dmg` with an Applications shortcut, prints the SHA-256 |
-| `./release.sh 0.2.0` | Bumps the version, builds the DMG and the IPA, creates the GitHub release with both, adds the version to the SideStore/AltStore source (`docs/apps.json`) and updates the Homebrew cask in [`rbc33/homebrew-fretline`](https://github.com/rbc33/homebrew-fretline) |
+| `./release.sh 0.2.0` | Bumps the version, builds the DMG and the IPA, creates the GitHub release with both, adds the version to the SideStore/AltStore source (`docs/apps.json`), updates the Homebrew cask in [`rbc33/homebrew-fretline`](https://github.com/rbc33/homebrew-fretline) and upgrades the copy installed on this Mac |
 | `./clean.sh` | Removes `build/`, `dist/` and leftover IPA files (`--all` also removes the generated Xcode project). `release.sh` runs it automatically |
 | `./update-source.sh 0.3.0` | Adds an already published release to the SideStore/AltStore source |
 

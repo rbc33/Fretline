@@ -5,6 +5,7 @@
 #   3. crea la release vX.Y.Z en GitHub con el .dmg y el .ipa
 #   4. actualiza la fuente de SideStore/AltStore (docs/apps.json)
 #   5. actualiza la cask del tap de Homebrew (versión + sha256) y la sube
+#   6. actualiza Fretline en este Mac con Homebrew (respondiendo «sí» a las preguntas)
 #
 # Uso: ./release.sh 0.2.0
 #      ./release.sh 0.1.0 --replace   (rehace una versión ya publicada: borra su release y su etiqueta)
@@ -78,11 +79,28 @@ git -C "$TAP_DIR" push -q
 # Fuera archivos intermedios; en dist/ quedan solo el DMG, el IPA y la app de esta versión
 rm -rf build Payload
 
+# 6. Actualizar Fretline en este Mac con Homebrew, aceptando las preguntas automáticamente
+#    (FRETLINE_NO_INSTALL=1 ./release.sh X.Y.Z para saltarlo)
+if [ -z "$FRETLINE_NO_INSTALL" ] && command -v brew >/dev/null; then
+  echo ""
+  echo "🍺 Actualizando Fretline en este Mac…"
+  brew update --quiet || true
+  if brew list --cask fretline >/dev/null 2>&1; then
+    if [ "$REPLACE" = "--replace" ]; then
+      # Misma versión: upgrade no la detecta como nueva
+      yes | brew reinstall --cask fretline
+    else
+      yes | brew upgrade --cask fretline
+    fi
+  else
+    yes | brew install --cask rbc33/fretline/fretline
+  fi
+fi
+
 echo ""
 echo "✅ Fretline $VERSION publicada"
 echo "   Release: https://github.com/$REPO/releases/tag/v$VERSION"
 echo "   Instalar: brew install --cask rbc33/fretline/fretline"
 echo "   Actualizar: brew upgrade --cask fretline"
-[ "$REPLACE" = "--replace" ] && echo "   (misma versión: brew update && brew reinstall --cask fretline)"
 echo ""
 echo "Recuerda hacer commit y push de project.yml y docs/apps.json (la fuente de SideStore/AltStore)."
