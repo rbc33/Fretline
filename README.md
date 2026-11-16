@@ -59,6 +59,24 @@ Tab sites are great at showing you the notes and bad at letting you **play along
 - Adjustable **A4 reference** (415–466 Hz) and a standard-tuning string guide (E A D G B E).
 - Open it from the library or the player with **⌘T**. Playback pauses so the tuner only hears your instrument.
 
+### ✏️ Tab editor
+- **Edit any tab**: press **Edit** (⌘E), click a string and type the fret. Change durations, dots and triplets, and add hammer-ons, slides, bends, palm mutes, let ring, vibrato and dead notes.
+- **Bars**: insert, duplicate or delete one bar or a whole selection. YouTube sync points shift to follow.
+- **Undo / redo** for every change. Nothing is saved until you press **Keep Changes**. Your original file stays safe, and **Revert to Original** brings it back.
+- **New Tab** (⌘N): start from scratch with title, artist, tuning (standard, drop D, E♭, DADGAD, 7-string, 4 and 5-string bass), tempo, time signature and number of bars.
+
+| Key | Action |
+| --- | --- |
+| `0`–`9` | Fret on the current string (two digits for 10–24) |
+| `←` `→` / `⌥←` `⌥→` | Previous / next beat, previous / next bar |
+| `↑` `↓` | String above / below |
+| `⌫` | Delete the note |
+| `+` / `−` | Shorter / longer duration |
+| `.` / `T` | Dotted / triplet |
+| `H` `S` `B` `P` `L` `V` `X` | Hammer-on, slide, bend, palm mute, let ring, vibrato, dead note |
+| `I` | Insert a beat |
+| `⌘Z` / `⇧⌘Z` | Undo / redo |
+
 ### 🎛️ Mixer and layout
 - Show or hide tracks, plus **mute** and **solo** per track.
 - **Page** or **horizontal** layout, with zoom in and out.

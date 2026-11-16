@@ -10,6 +10,9 @@ struct LibraryView: View {
     @State private var showSongsterr = false
     @State private var showHistory = false
     @State private var showTuner = false
+    @State private var showNewTab = false
+    /// Tab recién creada: se abre directamente en modo edición
+    @State private var newSongId: UUID?
     /// Enlace con el que abrir la hoja de Songsterr (al reimportar desde el historial)
     @State private var songsterrPrefill = ""
     @State private var path: [Song] = []
@@ -62,9 +65,12 @@ struct LibraryView: View {
             .searchable(text: $search, prompt: "Search your library and Songsterr")
             .task(id: trimmedSearch) { await searchSongsterr(trimmedSearch) }
             .navigationTitle("Fretline")
-            .navigationDestination(for: Song.self) { PlayerView(song: $0) }
+            .navigationDestination(for: Song.self) { PlayerView(song: $0, startEditing: $0.id == newSongId) }
             .toolbar {
                 ToolbarItemGroup(placement: .primaryAction) {
+                    Button("New Tab", systemImage: "square.and.pencil") { showNewTab = true }
+                        .keyboardShortcut("n")
+                        .help("Start a new tab from scratch (⌘N)")
                     Button("Tuner", systemImage: "tuningfork") { showTuner = true }
                         .keyboardShortcut("t")
                         .help("Chromatic tuner (⌘T)")
@@ -90,6 +96,12 @@ struct LibraryView: View {
                 SongsterrImportView(initialInput: songsterrPrefill) { song in path = [song] }
             }
             .sheet(isPresented: $showTuner) { TunerView() }
+            .sheet(isPresented: $showNewTab) {
+                NewTabSheet { song in
+                    newSongId = song.id
+                    path = [song]
+                }
+            }
             .sheet(isPresented: $showHistory) {
                 HistoryView(onOpen: { song in path = [song] },
                             onReimport: { id in
@@ -311,7 +323,7 @@ private struct SongRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: song.source == "songsterr" ? "music.note.list" : "doc.richtext")
+            Image(systemName: song.isCreatedHere ? "square.and.pencil" : song.source == "songsterr" ? "music.note.list" : "doc.richtext")
                 .font(.title2)
                 .foregroundStyle(.tint)
                 .frame(width: 36)
@@ -322,6 +334,9 @@ private struct SongRow: View {
                 }
             }
             Spacer()
+            if song.isEdited && !song.isCreatedHere {
+                Image(systemName: "pencil.circle").foregroundStyle(.orange).help("Edited")
+            }
             if song.favorite { Image(systemName: "star.fill").foregroundStyle(.yellow) }
             if song.youtubeVideoId != nil {
                 Image(systemName: song.syncPoints.isEmpty ? "play.rectangle" : "play.rectangle.fill")

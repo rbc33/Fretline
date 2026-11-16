@@ -54,8 +54,39 @@ enum SongLibrary {
         return fileName
     }
 
+    /// Guarda la tab editada como archivo nuevo (Guitar Pro 7). El original se conserva aparte
+    /// la primera vez, para poder volver a él; las versiones editadas anteriores se borran.
+    static func saveEdited(_ song: Song, data: Data, into context: ModelContext) throws {
+        let previous = song.fileName
+        let newName = try store(data: data, ext: "gp")
+        if song.originalFileName == nil && !song.isCreatedHere {
+            song.originalFileName = previous          // primera edición: guardamos el original
+            song.originalSyncPointsData = song.syncPointsData
+        } else {
+            try? FileManager.default.removeItem(at: songsDirectory.appending(path: previous))
+        }
+        song.fileName = newName
+        song.edits = []                               // los cambios de cuerda ya van dentro del archivo
+        try? context.save()
+    }
+
+    /// Vuelve al archivo original y borra la versión editada
+    static func revertToOriginal(_ song: Song, in context: ModelContext) {
+        guard let original = song.originalFileName else { return }
+        try? FileManager.default.removeItem(at: song.fileURL)
+        song.fileName = original
+        song.originalFileName = nil
+        song.syncPointsData = song.originalSyncPointsData
+        song.originalSyncPointsData = nil
+        song.edits = []
+        try? context.save()
+    }
+
     static func delete(_ song: Song, from context: ModelContext) {
         try? FileManager.default.removeItem(at: song.fileURL)
+        if let original = song.originalFileName {
+            try? FileManager.default.removeItem(at: songsDirectory.appending(path: original))
+        }
         context.delete(song)
         try? context.save()
     }

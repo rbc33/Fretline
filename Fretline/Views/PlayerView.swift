@@ -5,12 +5,14 @@ import SwiftData
 /// re-evalúa en cada init de la vista y crearía WKWebViews de usar y tirar).
 struct PlayerView: View {
     let song: Song
+    /// Abrir directamente en modo edición (tabs recién creadas)
+    var startEditing: Bool = false
     @State private var players: (engine: TabEngine, youtube: YouTubePlayer)?
 
     var body: some View {
         Group {
             if let players {
-                PlayerContent(song: song, engine: players.engine, youtube: players.youtube)
+                PlayerContent(song: song, engine: players.engine, youtube: players.youtube, startEditing: startEditing)
             } else {
                 ProgressView()
             }
@@ -26,6 +28,15 @@ private struct PlayerContent: View {
     @Environment(\.modelContext) private var modelContext
     let engine: TabEngine
     let youtube: YouTubePlayer
+    var startEditing = false
+
+    @Environment(\.dismiss) private var dismiss
+    /// Modo edición de la tablatura
+    @State private var editing = false
+    @State private var confirmEndEditing = false
+    @State private var confirmLeave = false
+    @State private var saving = false
+    private var editorDirty: Bool { engine.editorState.dirty }
 
     @State private var mode: PlaybackMode = .synth
     @State private var speed: Double = 1.0
@@ -97,6 +108,16 @@ private struct PlayerContent: View {
         .animation(.snappy, value: engine.notice)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: 0) {
+                if editing {
+                    EditorPanel(engine: engine,
+                                barSelection: engine.barSelection,
+                                canRevert: song.isEdited,
+                                onKeep: keepEditor,
+                                onDiscard: discardEditor,
+                                onRevert: revertToOriginal,
+                                onDone: endEditing)
+                    Divider()
+                }
                 if syncEditing {
                     SyncPanel(engine: engine, youtube: youtube) { syncEditing = false }
                     Divider()
@@ -117,6 +138,34 @@ private struct PlayerContent: View {
         .navigationTitle(song.title)
         .inlineNavigationTitle()
         .toolbar { topToolbar }
+        // Con cambios sin guardar, salir pregunta antes (en vez del botón «atrás» normal)
+        .navigationBarBackButtonHidden(editorDirty)
+        .toolbar {
+            if editorDirty {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close", systemImage: "chevron.backward") { confirmLeave = true }
+                        .help("Close the song (you’ll be asked about unsaved changes)")
+                }
+            }
+        }
+        .confirmationDialog("You have unsaved changes to this tab.", isPresented: $confirmLeave, titleVisibility: .visible) {
+            Button("Keep Changes and Close") { keepEditor(then: { dismiss() }) }
+            Button("Discard Changes and Close", role: .destructive) { dismiss() }
+            Button("Cancel", role: .cancel) {}
+        }
+        .confirmationDialog("You have unsaved changes to this tab.", isPresented: $confirmEndEditing, titleVisibility: .visible) {
+            Button("Keep Changes") { keepEditor(then: { editing = false }) }
+            Button("Discard Changes", role: .destructive) { discardEditor(); editing = false }
+            Button("Cancel", role: .cancel) {}
+        }
+        .onChange(of: editing) { _, on in
+            engine.editor("setEnabled", [on])
+            if on {
+                syncEditing = false
+                engine.pause()
+                youtube.pause()
+            }
+        }
         .sheet(isPresented: $showTuner) { TunerView() }
         .sheet(isPresented: $showTracks) {
             TracksSheet(engine: engine).presentationDetents([.medium, .large])
@@ -152,7 +201,7 @@ private struct PlayerContent: View {
             engine.setBarSelectMode(on)
             if on { syncEditing = false }
         }
-        .onChange(of: syncEditing) { _, on in if on { barSelecting = false } }
+        .onChange(of: syncEditing) { _, on in if on { barSelecting = false; if editing { endEditing() } } }
         .onChange(of: engine.barSelection) { old, new in
             // Al elegir compases se activa la repetición sola
             if new != nil, old == nil { looping = true }
@@ -306,6 +355,11 @@ private struct PlayerContent: View {
     @ToolbarContentBuilder
     private var topToolbar: some ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
+            Button(editing ? "Done Editing" : "Edit", systemImage: editing ? "checkmark.circle.fill" : "square.and.pencil") {
+                if editing { endEditing() } else { editing = true }
+            }
+            .keyboardShortcut("e")
+            .help(editing ? "Leave edit mode (⌘E)" : "Edit the tab: click a string and type a fret number (⌘E)")
             Button("Tuner", systemImage: "tuningfork") {
                 // El micrófono oiría la propia reproducción: pausamos antes de afinar
                 engine.pause()
@@ -387,6 +441,7 @@ private struct PlayerContent: View {
                         edits: song.edits, mode: initialMode)
         engine.setSpeed(speed)
         engine.setLatency(ms: latencyMs)
+        if startEditing { editing = true }
     }
 
     private func undoLastEdit() {
@@ -399,6 +454,53 @@ private struct PlayerContent: View {
         song.edits += sessionEdits
         sessionEdits = []
         engine.notice = "String changes kept. They'll be there next time you open this song."
+    }
+
+    // MARK: - Editor
+
+    private func endEditing() {
+        if editorDirty { confirmEndEditing = true } else { editing = false }
+    }
+
+    /// Guarda la tab editada como copia (Guitar Pro 7); el archivo original se conserva
+    private func keepEditor() { keepEditor(then: {}) }
+
+    private func keepEditor(then done: @escaping () -> Void) {
+        guard !saving else { return }
+        saving = true
+        Task {
+            defer { saving = false }
+            do {
+                let (data, syncPoints) = try await engine.exportEdited()
+                try SongLibrary.saveEdited(song, data: data, into: modelContext)
+                song.syncPoints = syncPoints
+                sessionEdits = []
+                engine.editor("saved")
+                // Recargar desde el archivo guardado (así descartar/recargar parten de aquí)
+                engine.loadSong(url: LocalSchemeHandler.songURL(song.fileName), syncPoints: song.syncPoints,
+                                edits: [], mode: mode)
+                engine.notice = song.isCreatedHere
+                    ? "Saved."
+                    : "Saved as an edited copy. Your original file is kept: use Revert to Original to go back."
+                done()
+            } catch {
+                engine.lastError = error.localizedDescription
+            }
+        }
+    }
+
+    /// Descarta los cambios del editor: vuelve a cargar la última versión guardada
+    private func discardEditor() {
+        engine.reloadWithEdits(song.edits + sessionEdits)
+        engine.notice = "Changes discarded."
+    }
+
+    private func revertToOriginal() {
+        SongLibrary.revertToOriginal(song, in: modelContext)
+        sessionEdits = []
+        engine.loadSong(url: LocalSchemeHandler.songURL(song.fileName), syncPoints: song.syncPoints,
+                        edits: [], mode: mode)
+        engine.notice = "Back to the original tab."
     }
 
     /// Borra los cambios guardados y vuelve a la tab original

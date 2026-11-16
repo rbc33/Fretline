@@ -4,6 +4,7 @@
 
 import * as alphaTab from './vendor/alphatab/alphaTab.min.mjs';
 import { buildScore, videoPointsToSync, playOrder, chooseVideo } from './songsterr/convert.js';
+import { Editor, TUNINGS } from './editor.js';
 
 const BASE = new URL('./', import.meta.url).href;
 const el = document.getElementById('tab');
@@ -43,6 +44,7 @@ const state = {
   savedRange: null,     // rango guardado mientras se cambia de modo
   latencyMs: null,      // compensación de latencia: null = automática
   edits: [],            // ediciones guardadas (mover compases de cuerda) a aplicar al cargar
+  rebuilding: false,    // el editor está recargando su partitura reconstruida (no es una carga nueva)
   holdUntil: null,      // YouTube: el cursor espera quieto hasta este tiempo (pre-roll)
   lastAudioActivity: 0, // última vez que sonó algo (para saber si hay que «calentar» el audio)
   downBar: null,
@@ -86,8 +88,14 @@ function createApi() {
 
   api.scoreLoaded.on((score) => {
     applySyncPointsToScore(score);
-    // Las ediciones se guardan aparte (el archivo original no se toca) y se aplican al cargar
-    for (const op of state.edits) moveStrings(score, op);
+    if (state.rebuilding) {
+      // Partitura reconstruida por el editor: ya lleva todos los cambios
+      state.rebuilding = false;
+    } else {
+      // Carga nueva: las ediciones de cuerda se guardan aparte y se aplican aquí
+      for (const op of state.edits) moveStrings(score, op);
+      editor?.resetHistory();
+    }
     post('scoreLoaded', {
       title: score.title,
       artist: score.artist,
@@ -103,7 +111,10 @@ function createApi() {
   });
 
   api.renderStarted.on(() => loading.classList.add('on'));
-  api.renderFinished.on(() => loading.classList.remove('on'));
+  api.renderFinished.on(() => {
+    loading.classList.remove('on');
+    editor?.updateCursor();
+  });
 
   api.playerReady.on(() => {
     api.playbackSpeed = state.speed;
@@ -518,7 +529,8 @@ function refreshSync() {
   if (!api?.score) return;
   applySyncPointsToScore(api.score);
   api.updateSyncPoints?.();
-  post('syncPoints', { points: state.syncPoints });
+  // Mientras se edita, los sync points (desplazados por compases nuevos/borrados) se guardan con Keep
+  if (!editor?.enabled) post('syncPoints', { points: state.syncPoints });
 }
 
 // ---------- utilidades ----------
@@ -610,6 +622,17 @@ window.fretline = {
     const sel = state.barSel;
     if (!api?.score || !sel) return post('notice', { message: 'Select one or more bars first.' });
     const op = { tracks: api.tracks.map((t) => t.index), start: sel.start, end: sel.end, delta };
+    if (editor?.enabled) {
+      // En modo edición es un cambio más del editor (con su deshacer), no una edición aparte
+      let result = null;
+      editor.commit((score) => { result = moveStrings(score, op); return result.moved > 0; });
+      if (result && result.skipped) {
+        post('notice', { message: result.moved
+          ? `Moved ${result.moved} notes. ${result.skipped} didn’t fit on the new string and stayed where they were.`
+          : `No notes fit on the ${delta > 0 ? 'higher' : 'lower'} string here, so they stayed where they were.` });
+      }
+      return;
+    }
     const result = moveStrings(api.score, op);
     if (result.moved === 0) {
       // No es un error: las notas que no caben se quedan como están (aquí, todas)
@@ -788,6 +811,90 @@ if (navigator.maxTouchPoints === 0) {
     if (!e.repeat) post('key', { key: 'space' });
   });
 }
+
+// ---------- editor ----------
+const editor = new Editor({
+  alphaTab,
+  getApi: () => state.api,
+  post,
+  el,
+  scroller,
+  onRebuild(score) {
+    const api = state.api;
+    const tick = api.tickPosition;
+    const sel = state.barSel;
+    const tracks = api.tracks.map((t) => t.index);
+    state.rebuilding = true;
+    const off = api.renderFinished.on(() => {
+      off();
+      if (sel && sel.end < score.masterBars.length) selectBars(sel.start, sel.end);
+      api.tickPosition = tick;
+      editor.updateCursor();
+    });
+    api.renderScore(score, tracks);
+  },
+});
+
+// Compases insertados o borrados: los sync points posteriores se desplazan
+function shiftSyncPoints(change) {
+  if (!change || !state.syncPoints.length) return;
+  const { kind, at, count } = change;
+  state.syncPoints = state.syncPoints
+    .filter((p) => kind !== 'delete' || p.barIndex < at || p.barIndex >= at + count)
+    .map((p) => (p.barIndex >= at ? { ...p, barIndex: p.barIndex + (kind === 'insert' ? count : -count) } : p));
+  refreshSync();
+}
+
+function bytesToBase64(bytes) { return bytesToB64(bytes); }
+
+window.fretline.editor = {
+  setEnabled: (on) => editor.setEnabled(on),
+  moveBeat: (d) => editor.moveBeat(d),
+  moveBar: (d) => editor.moveBar(d),
+  moveString: (d) => editor.moveString(d),
+  typeDigit: (n) => editor.typeDigit(n),
+  setFret: (f) => editor.setFret(f),
+  fretStep: (d) => editor.fretStep(d),
+  deleteNote: () => editor.deleteNote(),
+  setDuration: (d) => editor.setDuration(d),
+  durationStep: (d) => editor.durationStep(d),
+  toggleDot: () => editor.toggleDot(),
+  toggleTriplet: () => editor.toggleTriplet(),
+  toggleTechnique: (name) => editor.toggleTechnique(name),
+  insertBeat: () => editor.insertBeat(),
+  deleteBeat: () => editor.deleteBeat(),
+  insertBar: () => shiftSyncPoints(editor.insertBar()),
+  duplicateBars: () => shiftSyncPoints(editor.duplicateBars(state.barSel)),
+  deleteBars: () => {
+    const change = editor.deleteBars(state.barSel);
+    if (change) { clearBarSelection(); shiftSyncPoints(change); }
+  },
+  undo: () => editor.undo(),
+  redo: () => editor.redo(),
+  // Keep: exporta a Guitar Pro 7 para que Swift lo guarde (con los sync points ya desplazados)
+  export(requestId) {
+    try {
+      post('editorExported', { requestId, gpBase64: bytesToBase64(editor.exportGp()), syncPoints: state.syncPoints });
+    } catch (e) {
+      post('editorExported', { requestId, error: String(e?.message || e) });
+    }
+  },
+  // Swift confirma que se guardó: los cambios de cuerda ya van dentro del archivo
+  saved() {
+    editor.dirty = false;
+    state.edits = [];
+    editor.postState();
+  },
+  // Tab nueva vacía → bytes GP7 para que Swift la añada a la biblioteca
+  createScore(payload) {
+    try {
+      post('newTabCreated', { requestId: payload.requestId, gpBase64: bytesToBase64(editor.createScore(payload)) });
+    } catch (e) {
+      post('newTabCreated', { requestId: payload.requestId, error: String(e?.message || e) });
+    }
+  },
+  tunings: () => Object.entries(TUNINGS).map(([id, t]) => ({ id, name: t.name, strings: t.tuning.length })),
+};
 
 createApi();
 post('ready');

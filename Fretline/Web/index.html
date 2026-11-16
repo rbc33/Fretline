@@ -16,6 +16,11 @@
     #loading { position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
       font: 600 15px -apple-system, system-ui, sans-serif; color: #666; background: rgba(255,255,255,0.85); z-index: 10; }
     #loading.on { display: flex; }
+    /* Cursor del editor: casilla naranja en la cuerda y el tiempo seleccionados */
+    #edit-cursor { position: absolute; border: 2px solid #ff6a00; border-radius: 6px; background: rgba(255, 106, 0, 0.14);
+      pointer-events: none; z-index: 5; box-sizing: border-box; transition: left .06s ease-out, top .06s ease-out; }
+    #edit-cursor[hidden] { display: none; }
+    #scroller { position: absolute; }
   </style>
 </head>
 <body>

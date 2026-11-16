@@ -79,6 +79,14 @@ final class Song {
     var lastOpenedAt: Date?
     /// true mientras el título sea el nombre del archivo (se sustituye por el de la partitura al abrirla)
     var titleIsPlaceholder: Bool
+    /// Si se editó la tab: archivo original (para «Revert to Original»). nil = sin editar o tab creada aquí
+    var originalFileName: String?
+
+    /// Sync points de antes de editar (los compases nuevos/borrados los desplazan); para «Revert to Original»
+    var originalSyncPointsData: Data?
+
+    var isEdited: Bool { originalFileName != nil }
+    var isCreatedHere: Bool { source == "new" }
 
     init(title: String, artist: String = "", fileName: String, source: String = "file",
          songsterrId: Int? = nil, youtubeVideoId: String? = nil, syncPoints: [SyncPoint] = [],

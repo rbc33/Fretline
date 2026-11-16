@@ -14,6 +14,50 @@ struct SyncProgress: Equatable {
     var total: Int
 }
 
+/// Estado del editor que publica la capa web (cursor, nota, duración, técnicas, deshacer…)
+struct EditorState: Equatable {
+    var enabled = false
+    var editable = false
+    var bar = 0
+    var beat = 0
+    var beatCount = 0
+    var barCount = 0
+    /// Numeración de guitarrista: 1 = la cuerda más aguda
+    var string = 0
+    var stringCount = 0
+    var fret: Int?
+    var duration = 4
+    var dotted = false
+    var triplet = false
+    var isRest = true
+    var techniques: [String: Bool]?
+    var dirty = false
+    var canUndo = false
+    var canRedo = false
+
+    init() {}
+
+    init(dict d: [String: Any]) {
+        let int: (String) -> Int = { (d[$0] as? NSNumber)?.intValue ?? 0 }
+        let bool: (String) -> Bool = { d[$0] as? Bool ?? false }
+        enabled = bool("enabled"); editable = bool("editable")
+        bar = int("bar"); beat = int("beat"); beatCount = int("beatCount"); barCount = int("barCount")
+        string = int("string"); stringCount = int("stringCount")
+        fret = (d["fret"] as? NSNumber)?.intValue
+        duration = int("duration"); dotted = bool("dotted"); triplet = bool("triplet"); isRest = bool("isRest")
+        techniques = d["techniques"] as? [String: Bool]
+        dirty = bool("dirty"); canUndo = bool("canUndo"); canRedo = bool("canRedo")
+    }
+}
+
+enum EditorError: LocalizedError {
+    case failed(String)
+    var errorDescription: String? {
+        if case .failed(let message) = self { return message }
+        return nil
+    }
+}
+
 struct SongsterrConversion {
     let gpData: Data
     let title: String
@@ -68,6 +112,11 @@ final class TabEngine: NSObject, WKScriptMessageHandler {
     @ObservationIgnored private var currentMode: PlaybackMode = .synth
     @ObservationIgnored private var pending: [(String, [Any])] = []
     @ObservationIgnored private var conversions: [String: CheckedContinuation<SongsterrConversion, Error>] = [:]
+    @ObservationIgnored private var exports: [String: CheckedContinuation<(Data, [SyncPoint]), Error>] = [:]
+    @ObservationIgnored private var creations: [String: CheckedContinuation<Data, Error>] = [:]
+
+    /// Estado del editor que publica la capa web
+    private(set) var editorState = EditorState()
 
     override init() {
         let config = WKWebViewConfiguration()
@@ -168,12 +217,38 @@ final class TabEngine: NSObject, WKScriptMessageHandler {
             if queueIfNotReady { pending.append((fn, args)) }
             return
         }
-        webView.callAsyncJavaScript("window.fretline[fn](...args); return null;",
+        // `fn` puede ser una ruta, p. ej. "editor.typeDigit" → window.fretline.editor.typeDigit(...)
+        webView.callAsyncJavaScript("const p = fn.split('.'); let t = window.fretline; for (const k of p.slice(0, -1)) t = t[k]; t[p[p.length - 1]](...args); return null;",
                                     arguments: ["fn": fn, "args": args],
                                     in: nil, in: .page) { [weak self] result in
             if case .failure(let error) = result {
                 self?.lastError = "JS \(fn): \(error.localizedDescription)"
             }
+        }
+    }
+
+    // MARK: - Editor
+
+    /// Llama a window.fretline.editor.<fn>(...)
+    func editor(_ fn: String, _ args: [Any] = []) { invoke("editor.\(fn)", args) }
+
+    /// Exporta la partitura editada a Guitar Pro 7 (con los sync points desplazados por compases nuevos/borrados)
+    func exportEdited() async throws -> (Data, [SyncPoint]) {
+        let requestId = UUID().uuidString
+        return try await withCheckedThrowingContinuation { continuation in
+            exports[requestId] = continuation
+            editor("export", [requestId])
+        }
+    }
+
+    /// Crea una tab vacía y devuelve sus bytes en Guitar Pro 7
+    func createScore(_ options: [String: Any]) async throws -> Data {
+        let requestId = UUID().uuidString
+        var payload = options
+        payload["requestId"] = requestId
+        return try await withCheckedThrowingContinuation { continuation in
+            creations[requestId] = continuation
+            editor("createScore", [payload])
         }
     }
 
@@ -272,6 +347,26 @@ final class TabEngine: NSObject, WKScriptMessageHandler {
         case "externalPause": onExternalPause?()
         case "externalSeek": if let ms = num("ms") { onExternalSeek?(ms) }
         case "externalRate": if let rate = num("rate") { onExternalRate?(rate) }
+
+        case "editorState":
+            editorState = EditorState(dict: body)
+
+        case "editorExported":
+            guard let id = body["requestId"] as? String, let continuation = exports.removeValue(forKey: id) else { return }
+            if let b64 = body["gpBase64"] as? String, let data = Data(base64Encoded: b64) {
+                let points = (body["syncPoints"] as? [[String: Any]] ?? []).compactMap(SyncPoint.init(dict:))
+                continuation.resume(returning: (data, points))
+            } else {
+                continuation.resume(throwing: EditorError.failed(body["error"] as? String ?? "Couldn’t export the tab."))
+            }
+
+        case "newTabCreated":
+            guard let id = body["requestId"] as? String, let continuation = creations.removeValue(forKey: id) else { return }
+            if let b64 = body["gpBase64"] as? String, let data = Data(base64Encoded: b64) {
+                continuation.resume(returning: data)
+            } else {
+                continuation.resume(throwing: EditorError.failed(body["error"] as? String ?? "Couldn’t create the tab."))
+            }
 
         case "songsterrConverted":
             guard let id = body["requestId"] as? String, let continuation = conversions.removeValue(forKey: id) else { return }
