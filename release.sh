@@ -88,12 +88,19 @@ if [ -z "$FRETLINE_NO_INSTALL" ] && command -v brew >/dev/null; then
   if brew list --cask fretline >/dev/null 2>&1; then
     if [ "$REPLACE" = "--replace" ]; then
       # Misma versión: upgrade no la detecta como nueva
-      yes | brew reinstall --cask fretline
+      yes | brew reinstall --cask fretline || FRETLINE_BREW_FAILED=1
     else
-      yes | brew upgrade --cask fretline
+      yes | brew upgrade --cask fretline || FRETLINE_BREW_FAILED=1
+    fi
+    # Si se borró /Applications/Fretline.app a mano, brew no puede desinstalar la anterior:
+    # se olvida la instalación vieja y se instala de cero
+    if [ -n "$FRETLINE_BREW_FAILED" ]; then
+      echo "↻ Reinstalando Fretline desde cero…"
+      brew uninstall --cask --force fretline || true
+      yes | brew install --cask rbc33/fretline/fretline || echo "⚠️  No se pudo instalar con Homebrew. La release está publicada igualmente."
     fi
   else
-    yes | brew install --cask rbc33/fretline/fretline
+    yes | brew install --cask rbc33/fretline/fretline || echo "⚠️  No se pudo instalar con Homebrew. La release está publicada igualmente."
   fi
 fi
 
