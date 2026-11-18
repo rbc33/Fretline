@@ -6,9 +6,9 @@
 
 ### Learn any song, bar by bar, over the real recording.
 
-A native guitar tab player for **iPad and Mac**. Open Guitar Pro files, follow the cursor over the original YouTube video, slow it down, loop the hard part and nail it.
+A native guitar tab player for **iPad, iPhone and Mac**. Open Guitar Pro files, follow the cursor over the original YouTube video, slow it down, loop the hard part and nail it.
 
-[![Platform](https://img.shields.io/badge/platform-iPadOS%2017%2B%20%7C%20macOS%2014%2B-1E7BFF?style=flat-square&logo=apple&logoColor=white)](#install)
+[![Platform](https://img.shields.io/badge/platform-iPadOS%20%7C%20iOS%2017%2B%20%7C%20macOS%2014%2B-1E7BFF?style=flat-square&logo=apple&logoColor=white)](#install)
 [![Swift](https://img.shields.io/badge/Swift-SwiftUI%20%2B%20SwiftData-F05138?style=flat-square&logo=swift&logoColor=white)](#build-from-source)
 [![Homebrew](https://img.shields.io/badge/brew-rbc33%2Ffretline-FBB040?style=flat-square&logo=homebrew&logoColor=black)](#macos--homebrew-recommended)
 [![Release](https://img.shields.io/github/v/release/rbc33/Fretline?style=flat-square&color=0A3FBF)](https://github.com/rbc33/Fretline/releases/latest)
@@ -115,14 +115,16 @@ Grab the latest **`Fretline-x.y.z.dmg`** from [**Releases**](https://github.com/
 > Fretline is ad-hoc signed (no Apple Developer ID yet). The first time, **right-click → Open**, or run
 > `xattr -dr com.apple.quarantine /Applications/Fretline.app`. The Homebrew cask does this for you.
 
-### iPad · SideStore / AltStore
+### iPad and iPhone · SideStore / AltStore
+
+> On iPhone, Fretline runs in **landscape** only: the score, the video and the panels need the width.
 
 Fretline isn't on the App Store (yet). You can sideload it with your own Apple ID, and no Mac or Xcode is needed.
 
-1. **Install a sideloading app** on your iPad if you don't have one:
+1. **Install a sideloading app** on your iPad or iPhone if you don't have one:
    - [**SideStore**](https://sidestore.io): refreshes apps on-device, no computer needed after setup.
    - [**AltStore**](https://altstore.io): needs AltServer running on a Mac or PC on your Wi-Fi to refresh.
-2. **Add the Fretline source** (recommended, with automatic updates): open [**rbc33.github.io/Fretline**](https://rbc33.github.io/Fretline/) on your iPad and tap **Add to SideStore** or **Add to AltStore**. You can also add this URL by hand under **Sources → ＋**:
+2. **Add the Fretline source** (recommended, with automatic updates): open [**rbc33.github.io/Fretline**](https://rbc33.github.io/Fretline/) on your iPad or iPhone and tap **Add to SideStore** or **Add to AltStore**. You can also add this URL by hand under **Sources → ＋**:
    ```
    https://rbc33.github.io/Fretline/apps.json
    ```

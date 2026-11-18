@@ -9,7 +9,7 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "0.1.0"
+    MARKETING_VERSION: "0.5.0"
     CURRENT_PROJECT_VERSION: "1"
 
 targets:
@@ -31,7 +31,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.rbc33.fretline
         PRODUCT_NAME: Fretline
-        TARGETED_DEVICE_FAMILY: "2"
+        # 1 = iPhone (solo en horizontal), 2 = iPad
+        TARGETED_DEVICE_FAMILY: "1,2"
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Fretline/Info.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -44,6 +45,10 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
         UIRequiresFullScreen: false
+        # iPhone: solo horizontal (la interfaz está pensada para pantallas anchas)
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
         UISupportedInterfaceOrientations~ipad:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationPortraitUpsideDown
