@@ -58,7 +58,11 @@ private struct PlayerContent: View {
     /// Cambios de cuerda de esta sesión: temporales, se pierden al salir salvo que se pulse Keep
     @State private var sessionEdits: [StringEdit] = []
     @State private var videoCorner: Alignment = .bottomTrailing
-    @State private var videoMinimized = false
+    /// En iPhone el vídeo empieza pequeño para dejar sitio a la tab
+    @State private var videoMinimized = Device.isPhone
+    /// Vídeo oculto: sigue sonando, solo queda un botón para volver a mostrarlo
+    @State private var videoHidden = false
+    private let isPhone = Device.isPhone
     @State private var didSetup = false
 
     private static let synthSpeeds: [Double] = [0.25, 0.5, 0.6, 0.7, 0.75, 0.8, 0.9, 1.0, 1.1, 1.25, 1.5]
@@ -71,7 +75,7 @@ private struct PlayerContent: View {
                 .ignoresSafeArea(edges: [.bottom, .horizontal])
 
             if mode == .youtube, song.youtubeVideoId != nil {
-                videoCard.padding(12)
+                videoCard.padding(isPhone ? 8 : 12)
             }
         }
         .overlay(alignment: .top) {
@@ -108,6 +112,8 @@ private struct PlayerContent: View {
         .animation(.snappy, value: engine.notice)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: 0) {
+                PhoneScroll(enabled: isPhone) {
+                VStack(spacing: 0) {
                 if editing {
                     EditorPanel(engine: engine,
                                 barSelection: engine.barSelection,
@@ -130,6 +136,8 @@ private struct PlayerContent: View {
                                  onKeepEdits: keepEdits,
                                  onResetEdits: resetEdits) { barSelecting = false }
                     Divider()
+                }
+                }
                 }
                 transportBar
             }
@@ -216,11 +224,26 @@ private struct PlayerContent: View {
     // MARK: - Vídeo flotante
 
     private var videoCard: some View {
-        let size = videoMinimized ? CGSize(width: 200, height: 112) : CGSize(width: 400, height: 225)
+        let size = isPhone
+            ? (videoMinimized ? CGSize(width: 144, height: 81) : CGSize(width: 288, height: 162))
+            : (videoMinimized ? CGSize(width: 200, height: 112) : CGSize(width: 400, height: 225))
         return ZStack(alignment: .topLeading) {
+            // Oculto sigue en pantalla (invisible) para que el vídeo no se pare
             YouTubePlayerView(player: youtube)
                 .frame(width: size.width, height: size.height)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
+                .opacity(videoHidden ? 0 : 1)
+                .allowsHitTesting(!videoHidden)
+            if videoHidden {
+                Button { withAnimation(.snappy) { videoHidden = false } } label: {
+                    Label("Video", systemImage: "play.rectangle.fill")
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.red)
+                .controlSize(isPhone ? .small : .regular)
+                .help("Show the video")
+                .frame(width: size.width, height: size.height, alignment: videoCorner)
+            } else {
             HStack(spacing: 6) {
                 Button { cycleCorner() } label: { Image(systemName: "arrow.up.and.down.and.arrow.left.and.right") }
                     .help("Move the video to the next corner")
@@ -228,11 +251,15 @@ private struct PlayerContent: View {
                     Image(systemName: videoMinimized ? "arrow.up.left.and.arrow.down.right" : "arrow.down.right.and.arrow.up.left")
                 }
                 .help(videoMinimized ? "Enlarge the video" : "Shrink the video")
+                Button { withAnimation(.snappy) { videoHidden = true } } label: { Image(systemName: "eye.slash") }
+                    .help("Hide the video (it keeps playing)")
             }
             .font(.caption.bold())
             .buttonStyle(.bordered)
+            .controlSize(isPhone ? .mini : .regular)
             .tint(.white)
-            .padding(6)
+            .padding(isPhone ? 4 : 6)
+            }
             if let error = youtube.errorMessage {
                 Text(error)
                     .font(.caption)
@@ -256,26 +283,31 @@ private struct PlayerContent: View {
     // MARK: - Barra de transporte
 
     private var transportBar: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: isPhone ? 10 : 16) {
             Button { engine.stop() } label: { Image(systemName: "backward.end.fill") }
                 .keyboardShortcut(.home, modifiers: [])
                 .help("Stop and go back to the start (Home)")
 
             Button { engine.playPause() } label: {
                 Image(systemName: engine.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                    .font(.system(size: 40))
+                    .font(.system(size: isPhone ? 32 : 40))
             }
             .keyboardShortcut(syncEditing ? KeyEquivalent("p") : .space, modifiers: []) // en modo sync, espacio = marcar compás
             .disabled(!engine.isPlayerReady)
             .help(engine.isPlaying ? "Pause (Space)" : "Play (Space)")
 
             Text("\(format(engine.currentTime)) / \(format(engine.endTime))")
-                .font(.callout.monospacedDigit())
+                .font((isPhone ? Font.caption : .callout).monospacedDigit())
                 .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .fixedSize()
 
-            Text("Bar \(engine.currentBar + 1)\(engine.barCount > 0 ? " / \(engine.barCount)" : "")")
-                .font(.callout.monospacedDigit())
+            Text("\(isPhone ? "" : "Bar ")\(engine.currentBar + 1)\(engine.barCount > 0 ? " / \(engine.barCount)" : "")")
+                .font((isPhone ? Font.caption : .callout).monospacedDigit())
                 .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .fixedSize()
+                .help("Current bar")
 
             Spacer()
 
@@ -296,14 +328,20 @@ private struct PlayerContent: View {
                 }
             } label: {
                 Label("\(Int((speed * 100).rounded())) %", systemImage: "speedometer").monospacedDigit()
+                    .lineLimit(1)
+                    .labelStyle(AdaptiveLabelStyle(iconOnly: isPhone && speed == 1))
             }
+            .fixedSize()
             .help("Playback speed and cursor delay. Raise the delay if the cursor runs ahead of the sound (e.g. with Bluetooth headphones)")
             .onChange(of: latencyMs) { _, value in engine.setLatency(ms: value) }
 
             Toggle(isOn: $barSelecting) {
                 Label(barLabel, systemImage: "rectangle.dashed")
                     .monospacedDigit()
+                    .lineLimit(1)
+                    .labelStyle(AdaptiveLabelStyle(iconOnly: isPhone && engine.barSelection == nil))
             }
+            .fixedSize()
             .toggleStyle(.button)
             .help("Choose one or more bars to loop: tap the first and the last bar")
 
@@ -327,7 +365,10 @@ private struct PlayerContent: View {
                     .help("Count in one bar before playing")
                     .onChange(of: countIn) { _, on in engine.setCountIn(on) }
             } else {
-                Toggle(isOn: $syncEditing) { Label("Sync", systemImage: "waveform.badge.plus") }
+                Toggle(isOn: $syncEditing) {
+                    Label("Sync", systemImage: "waveform.badge.plus")
+                        .labelStyle(AdaptiveLabelStyle(iconOnly: isPhone))
+                }
                     .toggleStyle(.button)
                     .help("Sync the tab with the video: mark each bar while it plays")
             }
@@ -337,12 +378,12 @@ private struct PlayerContent: View {
                     ForEach(PlaybackMode.allCases) { Text($0.label).tag($0) }
                 }
                 .pickerStyle(.segmented)
-                .frame(width: 240)
+                .frame(width: isPhone ? 150 : 240)
                 .help("Play with the built-in synth or with the YouTube video")
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 10)
+        .padding(.horizontal, isPhone ? 12 : 20)
+        .padding(.vertical, isPhone ? 4 : 10)
     }
 
     private var barLabel: String {
@@ -525,5 +566,32 @@ private struct PlayerContent: View {
     private func format(_ ms: Double) -> String {
         let total = Int(ms / 1000)
         return String(format: "%d:%02d", total / 60, total % 60)
+    }
+}
+
+/// En iPhone, los paneles anchos (editor, loops, sync) se desplazan en horizontal en vez de cortarse.
+private struct PhoneScroll<Content: View>: View {
+    let enabled: Bool
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        if enabled {
+            ScrollView(.horizontal, showsIndicators: false) { content }
+        } else {
+            content
+        }
+    }
+}
+
+/// Solo icono o icono + texto según el espacio disponible
+private struct AdaptiveLabelStyle: LabelStyle {
+    let iconOnly: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        if iconOnly {
+            configuration.icon
+        } else {
+            HStack(spacing: 6) { configuration.icon; configuration.title }
+        }
     }
 }

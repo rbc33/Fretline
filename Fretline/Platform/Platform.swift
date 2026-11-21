@@ -56,3 +56,14 @@ extension View {
         #endif
     }
 }
+
+enum Device {
+    /// iPhone: pantalla pequeña, la interfaz se compacta (solo horizontal)
+    static var isPhone: Bool {
+        #if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .phone
+        #else
+        false
+        #endif
+    }
+}
