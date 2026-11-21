@@ -343,6 +343,12 @@ function clearBarSelection() {
 }
 
 // ---------- audio del sintetizador ----------
+// En iPhone el AudioContext de WKWebView obedece al interruptor de silencio (aunque la app use
+// .playback). Con audioSession.type = 'playback' (iOS 16.4+) suena siempre, como el vídeo.
+function forcePlaybackSession() {
+  try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch {}
+}
+forcePlaybackSession();
 // En WKWebView el AudioContext puede quedar "suspended" o "interrupted" (p. ej. después de
 // sonar el vídeo de YouTube). Los botones nativos no cuentan como gesto dentro de la web,
 // así que lo reanudamos nosotros y, si WebKit no deja, avisamos para que el usuario toque la tab.
@@ -466,6 +472,7 @@ setInterval(() => {
 async function playChecked() {
   const api = state.api;
   if (!api) return;
+  forcePlaybackSession();
   state.wantPlaying = true;
   const ok = await ensureAudioRunning();
   hookAudioContext();
@@ -487,6 +494,7 @@ async function playChecked() {
 // Cualquier toque en la partitura es un gesto real: reanuda el audio y, si había un play pendiente, arranca
 ['touchend', 'pointerup', 'click'].forEach((type) =>
   document.addEventListener(type, () => {
+    forcePlaybackSession();
     const ctx = audioContext();
     if (!ctx || (ctx.state === 'running' && !state.pendingPlay)) return;
     ctx.resume().catch(() => {}).finally(() => {
